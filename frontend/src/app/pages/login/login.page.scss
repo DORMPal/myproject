@@ -1,0 +1,145 @@
+:host {
+  display: block;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 20px;
+  padding: clamp(1.5rem, 2vw, 2rem);
+  box-shadow: 0 10px 60px rgba(22, 32, 72, 0.12);
+  backdrop-filter: blur(8px);
+  max-width: 720px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  padding: 0.35rem 0.85rem;
+  background: rgba(33, 150, 243, 0.12);
+  color: #0a6bce;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 0.45rem 0 0.4rem;
+  font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+  font-weight: 700;
+}
+
+.lede {
+  margin: 0 0 1.4rem;
+  color: #4b5563;
+  max-width: 48ch;
+}
+
+.login-form {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.8);
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  background: linear-gradient(120deg, #2563eb, #22c55e);
+  color: #fff;
+  padding: 0.95rem 1.2rem;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.primary:hover {
+  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.35);
+}
+
+.primary:active {
+  transform: translateY(1px);
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+}
+
+.stat {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.stat small {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+  font-weight: 600;
+}
+
+.stat .value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0.35rem 0;
+}
+
+.stat p {
+  margin: 0;
+  color: #94a3b8;
+}

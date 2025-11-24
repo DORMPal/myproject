@@ -1,0 +1,51 @@
+<section class="login-card">
+  <div class="eyebrow">Welcome back</div>
+  <h2>Plan meals without the mental overhead.</h2>
+  <p class="lede">
+    Sign in to see recipes you can cook right now, what is expiring soon, and how to stretch your ingredients.
+  </p>
+
+  <form class="login-form" (ngSubmit)="submit()">
+    <label>
+      <span>Email</span>
+      <input
+        type="email"
+        name="email"
+        [(ngModel)]="credentials.email"
+        placeholder="you@kitchen.com"
+        required
+      />
+    </label>
+
+    <label>
+      <span>Password</span>
+      <input
+        type="password"
+        name="password"
+        [(ngModel)]="credentials.password"
+        placeholder="••••••••"
+        required
+      />
+    </label>
+
+    <div class="form-footer">
+      <label class="checkbox">
+        <input type="checkbox" name="staySignedIn" [(ngModel)]="credentials.staySignedIn" />
+        <span>Keep me signed in for 14 days</span>
+      </label>
+      <a class="link">Forgot access?</a>
+    </div>
+
+    <button class="primary" type="submit">Login &amp; continue</button>
+  </form>
+
+  <div class="stat-row">
+    @for (stat of quickStats; track stat.label) {
+      <article class="stat">
+        <small>{{ stat.label }}</small>
+        <div class="value">{{ stat.value }}</div>
+        <p>{{ stat.hint }}</p>
+      </article>
+    }
+  </div>
+</section>

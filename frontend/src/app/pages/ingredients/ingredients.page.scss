@@ -1,0 +1,134 @@
+:host {
+  display: block;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  display: inline-flex;
+  padding: 0.25rem 0.7rem;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 0.35rem 0;
+  font-size: clamp(1.6rem, 2.2vw, 2.1rem);
+}
+
+.lede {
+  margin: 0;
+  color: #4b5563;
+}
+
+.primary {
+  background: linear-gradient(120deg, #6366f1, #22d3ee);
+  color: #fff;
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
+}
+
+.table {
+  margin-top: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.table-head,
+.row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+}
+
+.table-head {
+  background: rgba(15, 23, 42, 0.06);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.table-body {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.35rem 0.35rem 0.5rem;
+}
+
+.row {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease;
+}
+
+.row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.row.warning {
+  border-color: #f59e0b;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08), rgba(255, 255, 255, 0.95));
+}
+
+.row.urgent {
+  border-color: #ef4444;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.09), rgba(255, 255, 255, 0.96));
+}
+
+.name {
+  font-weight: 700;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.05);
+  font-weight: 700;
+}
+
+.status.fresh {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.15);
+}
+
+.status.urgent {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+@media (max-width: 800px) {
+  .table-head {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
