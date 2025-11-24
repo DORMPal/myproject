@@ -14,13 +14,10 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render navigation links', () => {
+  it('should render title', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const links = Array.from(compiled.querySelectorAll('nav a')).map((el) =>
-      el.textContent?.trim()
-    );
-    expect(links).toEqual(['Login', 'Cooking', 'Ingredients', 'Recipes']);
+    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, frontend');
   });
 });
