@@ -1,0 +1,26 @@
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.filters import SearchFilter
+
+from recipes.models import Recipe
+from recipes.serializers import RecipeSerializer
+
+
+class RecipeViewSet(ReadOnlyModelViewSet):
+    """
+    GET /api/recipes/           → list
+    GET /api/recipes/{id}/      → detail
+    รองรับ:
+      - ?search=คำค้น    (ค้น title, short_detail, tag.name)
+      - ?tag=ชื่อแท็ก    (filter ตาม tag เป๊ะ ๆ)
+    """
+    queryset = Recipe.objects.all().order_by('-created_at')
+    serializer_class = RecipeSerializer
+    filter_backends = [SearchFilter]
+    search_fields = ['title', 'short_detail', 'tags__name']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        tag_name = self.request.query_params.get('tag')
+        if tag_name:
+            qs = qs.filter(tags__name=tag_name)
+        return qs

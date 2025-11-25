@@ -1,0 +1,21 @@
+{% load i18n %}
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{% trans "Signing you in..." %}</title>
+  </head>
+  <body>
+    <p>{% trans "Signing you in with Google…" %}</p>
+
+    <form method="post" action="" id="social-login-form">
+      {% csrf_token %} {{ form.as_p }}
+    </form>
+
+    <script>
+      // กดปุ่ม Continue ให้อัตโนมัติ
+      document.getElementById("social-login-form").submit();
+    </script>
+  </body>
+</html>
