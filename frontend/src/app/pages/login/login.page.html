@@ -1,0 +1,27 @@
+<section class="login-card">
+  <div class="eyebrow">Welcome back</div>
+  <h2>Plan meals without the mental overhead.</h2>
+  <p class="lede">
+    Sign in to see recipes you can cook right now, what is expiring soon, and how to stretch your ingredients.
+  </p>
+
+  <div class="login-actions">
+    <a class="primary google-btn" [href]="googleLoginUrl">
+      <span>Continue with Google</span>
+      <small>Kasetsart University (@ku.th) accounts only</small>
+    </a>
+    <p class="note">
+      We enforce @ku.th logins on the backend, so pick your KU Google account when prompted.
+    </p>
+  </div>
+
+  <div class="stat-row">
+    @for (stat of quickStats; track stat.label) {
+      <article class="stat">
+        <small>{{ stat.label }}</small>
+        <div class="value">{{ stat.value }}</div>
+        <p>{{ stat.hint }}</p>
+      </article>
+    }
+  </div>
+</section>
