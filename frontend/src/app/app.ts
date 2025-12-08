@@ -11,4 +11,5 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 })
 export class App {
   readonly brand = 'PantryPilot';
+  readonly googleLoginUrl = 'http://localhost:8000/auth/google/login/';
 }

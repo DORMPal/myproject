@@ -1,12 +1,13 @@
 from django.db import models
+from django.conf import settings   # 👈 ใช้ FK ไปยัง User
 
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
     unit_of_measure = models.CharField(max_length=50, null=True, blank=True)
-    calories = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
+
+    # ถ้า unit เป็น null → common=True (ของที่ใช้บ่อยหรือไม่มีสัดส่วน เช่น พริก, เกลือ)
+    common = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'ingredient'
@@ -61,6 +62,26 @@ class Recipe(models.Model):
         return self.title
 
 
+class RecipeThumbnail(models.Model):
+    """
+    เก็บรูป thumbnail แยกตาราง แต่เป็น 1–1 กับ Recipe
+    """
+    recipe = models.OneToOneField(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='thumbnail_obj',   # recipe.thumbnail_obj
+    )
+    image = models.BinaryField(null=True, blank=True)
+    mime_type = models.CharField(max_length=100, null=True, blank=True)
+    source_url = models.URLField(max_length=500, null=True, blank=True)
+
+    class Meta:
+        db_table = 'recipe_thumbnail'
+
+    def __str__(self):
+        return f"Thumbnail of {self.recipe.title}"
+
+
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
         Recipe, on_delete=models.CASCADE, related_name='recipe_ingredients'
@@ -81,3 +102,31 @@ class RecipeIngredient(models.Model):
 
     def __str__(self):
         return f"{self.recipe.title} - {self.ingredient.name}"
+
+
+class UserStock(models.Model):
+    """
+    วัตถุดิบที่ผู้ใช้แต่ละคนมีในสต็อก
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='user_stocks',
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='user_stocks',
+    )
+    quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    expiration_date = models.DateField(null=True, blank=True)
+    date_added = models.DateField(auto_now_add=True)
+    disable = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'user_stock'
+
+    def __str__(self):
+        return f"{self.user} - {self.ingredient.name}"

@@ -120,9 +120,9 @@ class Command(BaseCommand):
                 detail_url = build_detail_url(link)
 
                 try:
-                    self.stdout.write(
-                        self.style.NOTICE(f"  Fetching detail: {detail_url}")
-                    )
+                    # self.stdout.write(
+                    #     self.style.NOTICE(f"  Fetching detail: {detail_url}")
+                    # )
                     resp = requests.get(detail_url, timeout=20)
                     resp.raise_for_status()
                     json_data = resp.json()
@@ -131,9 +131,9 @@ class Command(BaseCommand):
 
                     recipe = import_recipe_from_post(post)
 
-                    self.stdout.write(self.style.SUCCESS(
-                        f"    Imported: #{recipe.id} - {recipe.title}"
-                    ))
+                    # self.stdout.write(self.style.SUCCESS(
+                    #     f"    Imported: #{recipe.id} - {recipe.title}"
+                    # ))
 
                 except Exception as e:
                     self.stderr.write(self.style.ERROR(

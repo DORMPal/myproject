@@ -1,32 +1,70 @@
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
+import requests
 from django.utils.dateparse import parse_datetime
 
-from recipes.models import Recipe, Ingredient, RecipeIngredient, Tag
+from recipes.models import (
+    Recipe,
+    Ingredient,
+    RecipeIngredient,
+    Tag,
+    RecipeThumbnail,
+)
+
+# รองรับตัวเศษส่วนแบบยูนิโค้ดที่ krua.co ใช้ เช่น ¼ ½ ¾
+UNICODE_FRACTIONS = {
+    "¼": Decimal("0.25"),
+    "½": Decimal("0.5"),
+    "¾": Decimal("0.75"),
+}
 
 
 def parse_fraction(text: str | None) -> Decimal | None:
     """
     แปลง string ปริมาณ ให้เป็น Decimal
-    เช่น "1", "1 1/2", "1/4" → Decimal
+    เช่น "1", "1 1/2", "1/4", "¼" → Decimal
+    ถ้า parse ไม่ได้ให้คืน None (จะได้ไม่พังทั้งเมนู)
     """
     if not text:
         return None
+
     text = text.strip()
 
-    # "1 1/2"
+    # case เป็นตัวเศษส่วนยูนิโค้ดล้วน ๆ เช่น "¼"
+    if text in UNICODE_FRACTIONS:
+        return UNICODE_FRACTIONS[text]
+
+    # case มีตัวเศษส่วนยูนิโค้ดปน เช่น "1¼"
+    for ch, val in UNICODE_FRACTIONS.items():
+        if ch in text:
+            text = text.replace(ch, f" {str(val)}")
+
+    # "1 1/2" หรือ "1 0.25"
     if " " in text:
         whole, frac = text.split(" ", 1)
-        return Decimal(whole) + parse_fraction(frac)
+        try:
+            whole_dec = Decimal(whole)
+        except InvalidOperation:
+            return None
+        frac_dec = parse_fraction(frac)
+        if frac_dec is None:
+            return whole_dec
+        return whole_dec + frac_dec
 
     # "1/2"
     if "/" in text:
         num, den = text.split("/", 1)
-        return Decimal(num) / Decimal(den)
+        try:
+            return Decimal(num) / Decimal(den)
+        except InvalidOperation:
+            return None
 
     # ปกติ "1.5" หรือ "220"
-    return Decimal(text)
+    try:
+        return Decimal(text)
+    except InvalidOperation:
+        return None
 
 
 def normalize_name_qty_unit(raw_name: str,
@@ -72,13 +110,28 @@ def normalize_name_qty_unit(raw_name: str,
 
 def get_or_create_ingredient(name: str, unit: str | None) -> Ingredient:
     """
-    ใช้ชื่อเป็น key หลัก ถ้ามีแล้วไม่สร้างใหม่
-    ถ้า unit เดิมว่างและของใหม่มีค่า ก็อัปเดต unit ให้
+    - ใช้ name เป็น key หลัก
+    - ถ้า unit เป็น None -> common=True
+    - ถ้า unit ไม่ None -> common=False
+    - อัปเดต unit_of_measure ถ้าเพิ่งรู้ข้อมูลใหม่
+    - อัปเดต common ถ้าเปลี่ยนเงื่อนไข
     """
     ing, created = Ingredient.objects.get_or_create(name=name)
-    if unit and not ing.unit_of_measure:
+
+    new_common = (unit is None or unit == "")
+    changed = False
+
+    if unit and ing.unit_of_measure != unit:
         ing.unit_of_measure = unit
-        ing.save(update_fields=["unit_of_measure"])
+        changed = True
+
+    if ing.common != new_common:
+        ing.common = new_common
+        changed = True
+
+    if changed:
+        ing.save()
+
     return ing
 
 
@@ -97,8 +150,22 @@ def parse_servings(serves_text: str | None) -> int | None:
 def import_recipe_from_post(post: dict) -> Recipe:
     """
     รับ dict ที่คือ posts ใน JSON (pageProps.posts)
-    แล้วเซฟลง DB (Recipe + RecipeIngredient + Ingredient + Tags)
+    แล้วเซฟลง DB (Recipe + RecipeIngredient + Ingredient + Tags + Thumbnail แยกตาราง)
     """
+
+    # ---------- 0) เลือก URL รูป thumbnail จาก JSON ----------
+    thumb_url = None
+
+    # ลองใช้ banner_images ก่อน
+    banner_images = post.get("banner_images") or []
+    if banner_images:
+        thumb_url = banner_images[0].get("url")
+
+    # ถ้าไม่มี banner_images ให้ fallback ไปใช้ seo_image
+    if not thumb_url:
+        seo_image = post.get("seo_image") or {}
+        thumb_url = seo_image.get("url")
+
     # ---------- 1) สร้าง/อัปเดต Recipe ----------
     recipe, created = Recipe.objects.update_or_create(
         external_id=post["id"],
@@ -116,16 +183,31 @@ def import_recipe_from_post(post: dict) -> Recipe:
         }
     )
 
+    # ---------- 1.1) ดาวน์โหลด thumbnail เก็บใน RecipeThumbnail (1–1) ----------
+    if thumb_url:
+        # ถ้ายังไม่มี thumbnail_obj หรือเพิ่งสร้าง recipe ใหม่ → ดาวน์โหลด
+        existing_thumb = getattr(recipe, "thumbnail_obj", None)
+        if created or existing_thumb is None:
+            blob, mime_type = download_image_blob(thumb_url)
+            if blob:
+                RecipeThumbnail.objects.update_or_create(
+                    recipe=recipe,
+                    defaults={
+                        "image": blob,
+                        "mime_type": mime_type or "",
+                        "source_url": thumb_url,
+                    }
+                )
+
     # ---------- 2) จัดการ Ingredients ----------
-    # ลบ RecipeIngredient เดิมทิ้งก่อน (กันข้อมูลซ้ำ)
     recipe.recipe_ingredients.all().delete()
 
     main_ingredients = post.get("main_ingredients") or []
 
     for item in main_ingredients:
         ingredient_name = item.get("ingredient_name")
-        ingredient_value = item.get("ingredient_value", "").strip()
-        ingredient_unit = item.get("ingredient_unit", "").strip()
+        ingredient_value = (item.get("ingredient_value") or "").strip()
+        ingredient_unit = (item.get("ingredient_unit") or "").strip()
         sub_ingredients = item.get("sub_ingredients")
 
         # กรณีธรรมดา (ไม่มี sub_ingredients)
@@ -148,8 +230,8 @@ def import_recipe_from_post(post: dict) -> Recipe:
             group_name = ingredient_name
             for sub in sub_ingredients:
                 sub_name = sub.get("sub_ingredient_name")
-                sub_value = sub.get("ingredient_value", "").strip()
-                sub_unit = sub.get("ingredient_unit", "").strip()
+                sub_value = (sub.get("ingredient_value") or "").strip()
+                sub_unit = (sub.get("ingredient_unit") or "").strip()
 
                 clean_name, qty, unit = normalize_name_qty_unit(
                     sub_name, sub_value, sub_unit
@@ -163,18 +245,16 @@ def import_recipe_from_post(post: dict) -> Recipe:
                     group_name=group_name
                 )
 
-    # ---------- 3) จัดการ Tags (ทำในฟังก์ชันเดิมนี้เลย) ----------
-    # ล้าง tags เดิมก่อน กันค่าค้าง
+    # ---------- 3) จัดการ Tags ----------
     recipe.tags.clear()
 
-    # จาก JSON: "tags": [{ "id": 91, "name": "...", "slug": "..." }, ...]
     tag_items = post.get("tags") or []
 
     for t in tag_items:
         ext_id = t.get("id")
         name = (t.get("name") or "").strip()
         slug = (t.get("slug") or "").strip() or None
-        taxonomy = t.get("taxonomy")  # บางตัวมี taxonomy
+        taxonomy = t.get("taxonomy")
 
         if not name:
             continue
@@ -205,3 +285,20 @@ def import_recipe_from_post(post: dict) -> Recipe:
         recipe.tags.add(tag)
 
     return recipe
+
+
+def download_image_blob(url: str):
+    """
+    ดาวน์โหลดรูปจาก URL แล้วคืน (bytes, mime_type)
+    ถ้าดาวน์โหลดไม่ได้ คืน (None, None)
+    """
+    if not url:
+        return None, None
+
+    try:
+        resp = requests.get(url, timeout=20)
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "")
+        return resp.content, content_type
+    except Exception:
+        return None, None
