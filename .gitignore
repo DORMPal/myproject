@@ -1,1 +1,4 @@
 *.env
+*.sqlite3
+db.sqlite3
+backend/myproject/db.sqlite3
