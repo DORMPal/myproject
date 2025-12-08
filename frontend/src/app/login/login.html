@@ -1,27 +1,71 @@
-<div>
-  <div>
-    <img src="../../../asset/logo/logoProject.svg" alt="Chef" />
-    <h1>PantryChef</h1>
-  </div>
-  <div>
-    <div>ทำอาหารอย่างชาญฉลาดด้วยสิ่งที่คุณมีอยู่แล้ว</div>
-    <div>
-      เปลี่ยนวัตถุดิบของคุณให้เป็นมื้ออาหารแสนอร่อย PantryChef จะช่วยคุณจัดการของในครัว
-      ค้นหาสูตรอาหารจากวัตถุดิบที่มี และลดปริมาณขยะจากอาหาร
+<div class="login-hero min-h-screen flex flex-column">
+  <div class="flex align-items-center justify-content-between px-4 md:px-6 pt-4">
+    <div class="flex align-items-center gap-3">
+      <img class="logo" src="/assets/logo/logoProject.svg" alt="PantryChef logo" />
+      <div class="text-900 font-bold text-3xl md:text-4xl">PantryChef</div>
+    </div>
+    <!-- <p-button
+      label="Login"
+      styleClass="p-button-rounded p-button-lg p-button-outlined font-bold shadow-2"
+      (onClick)="login()"
+    /> -->
+    <div (click)="login()" class="border-2 font-bold text-4xl py-3 px-6 border-round-2xl">
+      Login
     </div>
   </div>
-  <div>
-    <div>
-      <div>แนะนำสูตรอาหารอัจฉริยะ</div>
-      <div>รับคำแนะนำสูตรอาหารที่ปรับให้เหมาะกับคุณ โดยจัดตามวัตถุดิบที่คุณมีอยู่แล้ว</div>
-    </div>
-    <div>
-      <div>การติดตามวันหมดอายุ</div>
-      <div>อย่าปล่อยให้อาหารเสียทิ้ง ติดตามวันหมดอายุและรับการแจ้งเตือนก่อนที่ของจะเน่าเสีย</div>
-    </div>
-    <div>
-      <div>การทำอาหารแบบทีละขั้นตอน</div>
-      <div>ทำตามขั้นตอนการทำอาหารโดยมีคำแนะนำ</div>
+
+  <div class="flex-1 flex align-items-center px-4 md:px-6 pb-6">
+    <div class="grid w-full align-items-center">
+      <div class="col-12 md:col-7 flex flex-column gap-4">
+        <div class="headline text-900">ทำอาหารอย่างชาญฉลาดด้วยสิ่งที่คุณมีอยู่แล้ว</div>
+        <p class="subtext m-0 text-800">
+          เปลี่ยนวัตถุดิบของคุณให้เป็นมื้ออาหารแสนอร่อย PantryChef จะช่วยคุณจัดการของในครัว
+          ค้นหาสูตรอาหารจากวัตถุดิบที่มี และลดปริมาณขยะจากอาหาร
+        </p>
+
+        <div class="flex flex-column gap-3">
+          <div class="feature-card flex align-items-start gap-3 p-3">
+            <span class="feature-dot mt-2"></span>
+            <div>
+              <div class="font-semibold text-xl text-900">แนะนำสูตรอาหารอัจฉริยะ</div>
+              <p class="m-0 text-700">
+                รับคำแนะนำสูตรอาหารที่ปรับให้เหมาะกับคุณ โดยจัดตามวัตถุดิบที่คุณมีอยู่แล้ว
+              </p>
+            </div>
+          </div>
+
+          <div class="feature-card flex align-items-start gap-3 p-3">
+            <span class="feature-dot mt-2"></span>
+            <div>
+              <div class="font-semibold text-xl text-900">การติดตามวันหมดอายุ</div>
+              <p class="m-0 text-700">
+                อย่าปล่อยให้อาหารเสียทิ้ง ติดตามวันหมดอายุและรับการแจ้งเตือนก่อนที่ของจะเน่าเสีย
+              </p>
+            </div>
+          </div>
+
+          <div class="feature-card flex align-items-start gap-3 p-3">
+            <span class="feature-dot mt-2"></span>
+            <div>
+              <div class="font-semibold text-xl text-900">การทำอาหารแบบทีละขั้นตอน</div>
+              <p class="m-0 text-700">ทำตามขั้นตอนการทำอาหารโดยมีคำแนะนำทีละสเต็ป</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 md:col-5 flex justify-content-end">
+        <div
+          class="highlight-card surface-section p-4 md:p-5 border-round-3xl shadow-3 w-full md:w-10"
+        >
+          <div class="badge shadow-1 mb-3">ใหม่</div>
+          <div class="text-900 font-bold text-2xl mb-2">จัดการวัตถุดิบง่ายขึ้น</div>
+          <p class="m-0 text-700 line-height-3">
+            ปรับสมดุลวัตถุดิบที่มีอยู่ในครัวของคุณ เช็กของใกล้หมดอายุ
+            และสร้างรายการวัตถุดิบที่ต้องซื้อ เพื่อให้คุณทำอาหารได้อย่างมั่นใจทุกวัน
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </div>

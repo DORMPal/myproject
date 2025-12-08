@@ -51,7 +51,7 @@ async function prerenderPages(workspaceRoot, baseHref, appShellOptions, prerende
     serverBundlesSourceMaps.clear();
     const assetsReversed = {};
     for (const { source, destination } of assets) {
-        assetsReversed[addLeadingSlash((0, path_1.toPosixPath)(destination))] = source;
+        assetsReversed[(0, url_1.addLeadingSlash)((0, path_1.toPosixPath)(destination))] = source;
     }
     // Get routes to prerender
     const { errors: extractionErrors, serializedRouteTree: serializableRouteTreeNode, appShellRoute, } = await getAllRoutes(workspaceRoot, baseHref, outputFilesForWorker, assetsReversed, appShellOptions, prerenderOptions, sourcemap, outputMode).catch((err) => {
@@ -129,14 +129,14 @@ async function renderPages(baseHref, sourcemap, serializableRouteTreeNode, maxTh
     });
     try {
         const renderingPromises = [];
-        const appShellRouteWithLeadingSlash = appShellRoute && addLeadingSlash(appShellRoute);
+        const appShellRouteWithLeadingSlash = appShellRoute && (0, url_1.addLeadingSlash)(appShellRoute);
         const baseHrefPathnameWithLeadingSlash = new URL(baseHref, 'http://localhost').pathname;
         for (const { route, redirectTo } of serializableRouteTreeNode) {
             // Remove the base href from the file output path.
-            const routeWithoutBaseHref = addTrailingSlash(route).startsWith(baseHrefPathnameWithLeadingSlash)
-                ? addLeadingSlash(route.slice(baseHrefPathnameWithLeadingSlash.length))
+            const routeWithoutBaseHref = (0, url_1.addTrailingSlash)(route).startsWith(baseHrefPathnameWithLeadingSlash)
+                ? (0, url_1.addLeadingSlash)(route.slice(baseHrefPathnameWithLeadingSlash.length))
                 : route;
-            const outPath = node_path_1.posix.join(removeLeadingSlash(routeWithoutBaseHref), 'index.html');
+            const outPath = (0, url_1.stripLeadingSlash)(node_path_1.posix.join(routeWithoutBaseHref, 'index.html'));
             if (typeof redirectTo === 'string') {
                 output[outPath] = { content: (0, utils_2.generateRedirectStaticPage)(redirectTo), appShellRoute: false };
                 continue;
@@ -172,7 +172,7 @@ async function getAllRoutes(workspaceRoot, baseHref, outputFilesForWorker, asset
     const routes = [];
     let appShellRoute;
     if (appShellOptions) {
-        appShellRoute = (0, url_1.urlJoin)(baseHref, appShellOptions.route);
+        appShellRoute = (0, url_1.joinUrlParts)(baseHref, appShellOptions.route);
         routes.push({
             renderMode: models_1.RouteRenderMode.Prerender,
             route: appShellRoute,
@@ -183,7 +183,7 @@ async function getAllRoutes(workspaceRoot, baseHref, outputFilesForWorker, asset
         for (const route of routesFromFile) {
             routes.push({
                 renderMode: models_1.RouteRenderMode.Prerender,
-                route: (0, url_1.urlJoin)(baseHref, route.trim()),
+                route: (0, url_1.joinUrlParts)(baseHref, route.trim()),
             });
         }
     }
@@ -232,13 +232,4 @@ async function getAllRoutes(workspaceRoot, baseHref, outputFilesForWorker, asset
     finally {
         void renderWorker.destroy();
     }
-}
-function addLeadingSlash(value) {
-    return value[0] === '/' ? value : '/' + value;
-}
-function addTrailingSlash(url) {
-    return url[url.length - 1] === '/' ? url : `${url}/`;
-}
-function removeLeadingSlash(value) {
-    return value[0] === '/' ? value.slice(1) : value;
 }

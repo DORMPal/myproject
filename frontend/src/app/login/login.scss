@@ -1,0 +1,90 @@
+.login-hero {
+  background: linear-gradient(135deg, #fefbf7 0%, #fefbf7 45%, #ffb17a 100%);
+  position: relative;
+  overflow: hidden;
+  color: #111827;
+}
+
+.login-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.6), transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.4), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.3), transparent 45%);
+  pointer-events: none;
+}
+
+.login-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+}
+
+.headline {
+  font-size: clamp(2.5rem, 2vw + 2rem, 3.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.subtext {
+  font-size: 1.1rem;
+  max-width: 38rem;
+}
+
+.feature-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(6px);
+}
+
+.feature-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff9f4a 0%, #ff7a18 100%);
+  box-shadow: 0 0 0 4px rgba(255, 154, 72, 0.15);
+  flex-shrink: 0;
+}
+
+.highlight-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ffe0c2;
+  box-shadow: 0 12px 40px rgba(255, 138, 64, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #0b3c5d;
+  background: linear-gradient(135deg, #ffffff 0%, #b9e6ff 100%);
+  border: 1px solid rgba(24, 144, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .login-hero {
+    background: linear-gradient(180deg, #fefbf7 0%, #ffb17a 100%);
+  }
+
+  .headline {
+    font-size: 2.25rem;
+  }
+
+  .subtext {
+    font-size: 1rem;
+  }
+
+  .highlight-card {
+    width: 100%;
+  }
+}

@@ -449,7 +449,9 @@ function getLocaleBaseHref(baseHref = '', i18n, locale) {
         return undefined;
     }
     const baseHrefSuffix = localeData.baseHref ?? localeData.subPath + '/';
-    return baseHrefSuffix !== '' ? (0, url_1.urlJoin)(baseHref, baseHrefSuffix) : undefined;
+    return baseHrefSuffix !== ''
+        ? (0, url_1.addTrailingSlash)((0, url_1.joinUrlParts)(baseHref, baseHrefSuffix))
+        : undefined;
 }
 /**
  * Normalizes an array of external dependency paths by ensuring that
