@@ -1,41 +1,49 @@
-<div class="section-header">
-  <div>
-    <div class="eyebrow">Recipes</div>
-    <h2>Browse recipes and filter by what matters.</h2>
-    <p class="lede">
-      Search by title or flavor note. Filters let you quickly switch between protein goals, diet type, or prep style.
-    </p>
-  </div>
-  <div class="search">
-    <input [(ngModel)]="search" type="text" placeholder="Search recipes..." />
-  </div>
-</div>
+<app-header active="recipes" />
 
-<div class="filters">
-  @for (tag of ['All', 'Vegetarian', 'Vegan', 'High-protein', 'Sheet-pan', 'Comfort']; track tag) {
-    <button class="chip" [class.active]="isActive(tag)" (click)="toggleFilter(tag)">
-      {{ tag }}
-    </button>
-  }
-</div>
+<div class="page">
+  <section class="section">
+    <div class="section-title">เมนูแนะนำจากวัตถุดิบ</div>
+    <div class="card">
+      <p-carousel
+        [value]="products"
+        [numVisible]="3"
+        [numScroll]="1"
+        [circular]="true"
+        [responsiveOptions]="responsiveOptions"
+        autoplayInterval="3000"
+      >
+        <ng-template pTemplate="item" let-product>
+          <div class="border border-surface-200 dark:border-surface-700 rounded m-2 p-4">
+            <div class="mb-4">
+              <div class="relative mx-auto">
+                <img
+                  src="https://primefaces.org/cdn/primeng/images/demo/product/{{ product.image }}"
+                  [alt]="product.name"
+                  class="w-full rounded-border"
+                />
+                <p-tag
+                  [value]="product.inventoryStatus"
+                  class="absolute dark:!bg-surface-900"
+                  [ngStyle]="{ 'left.px': 5, 'top.px': 5 }"
+                />
+              </div>
+            </div>
+            <div class="mb-4 font-medium">{{ product.name }}</div>
+            <div class="flex justify-between items-center">
+              <div class="mt-0 font-semibold text-xl">{{ '$' + product.price }}</div>
+              <span>
+                <p-button icon="pi pi-heart" severity="secondary" [outlined]="true" />
+                <p-button icon="pi pi-shopping-cart" styleClass="ml-2" />
+              </span>
+            </div>
+          </div>
+        </ng-template>
+      </p-carousel>
+    </div>
+  </section>
 
-<div class="grid">
-  @for (recipe of visibleRecipes(); track recipe.title) {
-    <article class="card">
-      <header>
-        <p class="eyebrow subtle">{{ recipe.difficulty }}</p>
-        <span class="pill">{{ recipe.readyIn }}</span>
-      </header>
-      <h3>{{ recipe.title }}</h3>
-      <p class="summary">{{ recipe.summary }}</p>
-      <div class="tags">
-        @for (tag of recipe.tags; track tag) {
-          <span class="tag">{{ tag }}</span>
-        }
-      </div>
-      <button class="secondary">Open recipe</button>
-    </article>
-  } @empty {
-    <div class="empty">No recipes match that filter yet.</div>
-  }
+  <section class="section">
+    <div class="section-title">เมนูทั้งหมด</div>
+    <div></div>
+  </section>
 </div>

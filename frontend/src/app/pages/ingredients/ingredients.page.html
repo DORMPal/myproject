@@ -1,34 +1,73 @@
-<div class="section-header">
-  <div>
-    <div class="eyebrow">Pantry</div>
-    <h2>All your ingredients, grouped by item.</h2>
-    <p class="lede">
-      Duplicate items like milk show as separate rows with their own volume and expiration so you know what to use first.
-    </p>
-  </div>
-  <button class="primary">Add ingredient</button>
-</div>
+<app-header active="ingredients" />
 
-<div class="table">
-  <div class="table-head">
-    <span>Ingredient</span>
-    <span>Quantity</span>
-    <span>Expires</span>
-    <span>Status</span>
-    <span>Notes</span>
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="title mb-3">วัตถุดิบของฉัน</div>
+      <div class="subtitle">จัดการวัตถุดิบและติดตามวันหมดอายุ</div>
+    </div>
+    <p-button label="เพิ่มวัตถุดิบ" icon="pi pi-plus" styleClass="add-btn" />
   </div>
 
-  <div class="table-body">
-    @for (ingredient of ingredients; track ingredient.name + ingredient.quantity + ingredient.expires) {
-      <div class="row" [class.urgent]="ingredient.status === 'urgent'" [class.warning]="ingredient.status === 'warning'">
-        <span class="name">{{ ingredient.name }}</span>
-        <span>{{ ingredient.quantity }}</span>
-        <span>{{ ingredient.expires }}</span>
-        <span class="status" [class.fresh]="ingredient.status === 'fresh'" [class.urgent]="ingredient.status === 'urgent'">
-          {{ ingredient.status | titlecase }}
-        </span>
-        <span class="muted">{{ ingredient.notes || '—' }}</span>
-      </div>
-    }
+  <div class="stats grid">
+    <div class="col-12 md:col-4">
+      <p-card class="stat-card">
+        <div class="stat-label">วัตถุดิบทั้งหมด</div>
+        <div class="stat-value">{{ totalCount }}</div>
+      </p-card>
+    </div>
+    <div class="col-12 md:col-4">
+      <p-card class="stat-card">
+        <div class="stat-label">กำลังจะหมดอายุ</div>
+        <div class="stat-value">{{ expiringSoon }}</div>
+      </p-card>
+    </div>
+    <div class="col-12 md:col-4">
+      <p-card class="stat-card">
+        <div class="stat-label">หมดอายุ</div>
+        <div class="stat-value danger">{{ expired }}</div>
+      </p-card>
+    </div>
   </div>
+
+  <div class="search-bar flex align-items-center gap-3">
+    <i class="pi pi-search"></i>
+    <input pInputText type="text" [(ngModel)]="searchTerm" placeholder="ค้นหาวัตถุดิบ..." />
+  </div>
+
+  <p-card class="table-card">
+    <p-table
+      [value]="filteredIngredients"
+      [paginator]="true"
+      [rows]="5"
+      [rowsPerPageOptions]="[5, 10, 20]"
+      [responsiveLayout]="'scroll'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>ชื่อ</th>
+          <th>ประเภท</th>
+          <th>วันหมดอายุ</th>
+          <th class="action-col">Action</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-ingredient>
+        <tr>
+          <td>{{ ingredient.name }}</td>
+          <td>{{ ingredient.quantity }}</td>
+          <td>{{ ingredient.expires }}</td>
+          <td class="actions">
+            <p-button label="แก้ไข" size="small" [text]="true" (click)="onEdit(ingredient)" />
+            <p-button
+              label="ลบ"
+              size="small"
+              [text]="true"
+              severity="danger"
+              (click)="onDelete(ingredient)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
 </div>

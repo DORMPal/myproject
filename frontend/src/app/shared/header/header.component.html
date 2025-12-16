@@ -1,0 +1,50 @@
+<header class="app-header shadow-1 px-3 py-2 flex align-items-center justify-content-between">
+  <div class="brand flex align-items-center gap-2">
+    <img class="logo" src="/assets/logo/logoProject.svg" alt="PantryChef logo" />
+    <span class="brand-name text-900">PantryChef</span>
+  </div>
+
+  <nav class="nav flex align-items-center gap-4">
+    <a class="nav-link" [class.active]="active === 'recipes'" routerLink="/page/recipes">
+      <span class="icon">
+        <!-- <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M15.5 3a2.5 2.5 0 0 1 2.45 2.02l.53 2.79a1 1 0 0 1-1.64.9L15 7.79l-4.4 4.4a2.75 2.75 0 0 1-.73 4.76l-4.02 1.61a1 1 0 0 1-1.05-1.64l3.3-2.99a1.5 1.5 0 0 0-.31-2.44l-.54-.27a1 1 0 0 1-.14-1.7l7.5-5.95A2.5 2.5 0 0 1 15.5 3Z"
+            fill="currentColor"
+          />
+        </svg> -->
+        <img src="/assets/header/recipeLogo.svg" alt="PantryChef logo" />
+      </span>
+      <span class="label">สูตรอาหาร</span>
+    </a>
+
+    <a class="nav-link" [class.active]="active === 'ingredients'" routerLink="/page/ingredient">
+      <span class="icon">
+        <!-- <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M14.5 3c-1.33 0-2.5 1.17-2.5 2.5 0 .76.33 1.44.86 1.9l-6.6 6.6a2.5 2.5 0 0 0-.66 1.18l-.93 3.38a1 1 0 0 0 1.24 1.24l3.38-.93a2.5 2.5 0 0 0 1.18-.66l6.6-6.6A2.5 2.5 0 0 0 17.5 10c0-.65-.24-1.24-.63-1.7l1.41-1.41a1 1 0 1 0-1.41-1.41L15.46 6l-.76-.76c-.2-.2-.3-.47-.3-.74 0-.55.55-1 1.1-1h.26a1 1 0 1 0 0-2H14.5Z"
+            fill="currentColor"
+          />
+        </svg> -->
+        <img src="/assets/header/ingredientLogo.svg" alt="PantryChef logo" />
+      </span>
+      <span class="label">วัตถุดิบของฉัน</span>
+    </a>
+  </nav>
+
+  <div class="user flex align-items-center gap-3">
+    <span class="username text-800">Palapon</span>
+    <button class="logout" type="button" (click)="logout()">
+      <span class="logout-icon">
+        <!-- <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M13 5a1 1 0 0 0-1-1H6a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h6a1 1 0 1 0 0-2H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6a1 1 0 0 0 1-1Zm2.3 3.3a1 1 0 0 0-1.4 1.4L15.58 11H10a1 1 0 1 0 0 2h5.58l-1.67 1.3a1 1 0 1 0 1.24 1.6l3.75-2.92a1 1 0 0 0 0-1.56L15.3 8.3Z"
+            fill="currentColor"
+          />
+        </svg> -->
+        <i class="pi pi-sign-out"></i>
+      </span>
+      <span class="logout-text">Logout</span>
+    </button>
+  </div>
+</header>
