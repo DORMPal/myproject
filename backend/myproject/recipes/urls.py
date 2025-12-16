@@ -3,7 +3,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .api import RecipeViewSet
-from .api_views import IngredientDeleteWithRecipesView
+from .api_views import (
+    IngredientDeleteWithRecipesView,
+    UserIngredientListView,
+    UserIngredientDetailView,
+    IngredientListView,
+    MeView,
+)
 
 router = DefaultRouter()
 # /api/recipes/  (list)
@@ -20,4 +26,16 @@ urlpatterns = [
         IngredientDeleteWithRecipesView.as_view(),
         name="ingredient-delete-with-recipes",
     ),
+    # GET/POST /api/user (body/query userId)
+    path("user", UserIngredientListView.as_view(), name="user-ingredient-list"),
+    # POST/PATCH/DELETE /api/user/<ingredient_id>/
+    path(
+        "user/<int:ingredient_id>/",
+        UserIngredientDetailView.as_view(),
+        name="user-ingredient-detail",
+    ),
+    # GET /api/ingredient
+    path("ingredient", IngredientListView.as_view(), name="ingredient-list"),
+    # GET /api/auth/me (session-based)
+    path("auth/me", MeView.as_view(), name="auth-me"),
 ]
