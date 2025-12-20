@@ -23,7 +23,7 @@ class IngredientDeleteWithRecipesView(APIView):
     - ลบ ingredient ตัวนี้ (row ใน recipe_ingredient จะโดนลบตามถ้า FK เป็น CASCADE)
     """
 
-    permission_classes = [IsAuthenticated]  # ปรับได้ (เช่น IsAdminUser)
+    # permission_classes = [IsAuthenticated]  # ปรับได้ (เช่น IsAdminUser)
 
     def delete(self, request, pk, *args, **kwargs):
         ingredient = get_object_or_404(Ingredient, pk=pk)
@@ -126,7 +126,12 @@ class IngredientListView(APIView):
     """
 
     def get(self, request, *args, **kwargs):
-        ingredients = Ingredient.objects.all().order_by("name")
+        # ingredients = Ingredient.objects.all().order_by("name")
+        ingredients = (
+            Ingredient.objects
+            .filter(common=False)
+            .order_by("name")
+        )
         data = IngredientSerializer(ingredients, many=True).data
         return Response(data)
 

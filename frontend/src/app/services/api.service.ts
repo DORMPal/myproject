@@ -1,22 +1,58 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 export interface RecipeDetail {
-  id: string;
+  id: number;
+  external_id: number | null;
   title: string;
-  description: string;
-  ingredients: string[];
-  steps: string[];
+  short_detail: string | null;
+  instructions: string | null;
+  servings: number | null;
+  level: number | null;
+  created_at: string | null;
+  tags: TagItem[];
+  ingredients: RecipeIngredientItem[];
+  thumbnail: RecipeThumbnail | null;
   [key: string]: unknown;
 }
 
-export interface IngredientRecord {
-  id: string;
+export interface TagItem {
+  id: number;
+  external_id: number | null;
   name: string;
-  quantity?: string;
-  expires?: string;
-  [key: string]: unknown;
+  slug: string | null;
+  taxonomy: string | null;
+}
+
+export interface RecipeIngredientItem {
+  ingredient_name: string;
+  required_quantity: string | null;
+  required_unit: string | null;
+  group_name: string | null;
+}
+
+export interface RecipeThumbnail {
+  mime_type: string;
+  data: string; // "data:image/jpeg;base64,..."
+  source_url: string;
+}
+
+export interface SelectIngredient {
+  id: number;
+  name: string;
+  unit_of_measure: string | null;
+  common: boolean;
+}
+
+export interface IngredientRecord {
+  id: number; // id ของ UserStock row
+  ingredient_id: number; // FK ingredient
+  ingredient_name: string; // ชื่อ ingredient
+  quantity: string | null; // Decimal มักถูกส่งมาเป็น string
+  expiration_date: string | null; // "YYYY-MM-DD"
+  date_added: string; // "YYYY-MM-DD"
+  disable: boolean;
 }
 
 export interface CurrentUser {
@@ -25,60 +61,109 @@ export interface CurrentUser {
   name: string;
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class ApiService {
-  // Use absolute backend URL to ensure calls hit Django (adjust if backend host changes)
   private readonly baseUrl = 'http://localhost:8000/api';
   private readonly httpOptions = { withCredentials: true };
 
   constructor(private readonly http: HttpClient) {}
 
-  getRecipeById(recipeId: string): Observable<RecipeDetail> {
-    return this.http.get<RecipeDetail>(`${this.baseUrl}/recipes/${recipeId}`, this.httpOptions);
+  // GET /api/recipes/?page=1&search=...&tag=...
+  getRecipes(params?: {
+    page?: number;
+    search?: string;
+    tag?: string;
+  }): Observable<PaginatedResponse<RecipeDetail>> {
+    let httpParams = new HttpParams();
+    if (params?.page) httpParams = httpParams.set('page', String(params.page));
+    if (params?.search) httpParams = httpParams.set('search', params.search);
+    if (params?.tag) httpParams = httpParams.set('tag', params.tag);
+
+    return this.http.get<PaginatedResponse<RecipeDetail>>(`${this.baseUrl}/recipes/`, {
+      params: httpParams,
+      ...this.httpOptions,
+    });
   }
 
-  getIngredientsByUserId(userId: string): Observable<IngredientRecord[]> {
+  // GET /api/recipes/<id>/
+  getRecipeById(recipeId: number | string): Observable<RecipeDetail> {
+    return this.http.get<RecipeDetail>(`${this.baseUrl}/recipes/${recipeId}/`, this.httpOptions);
+  }
+
+  getIngredientsByUserId(userId: number | string): Observable<IngredientRecord[]> {
     return this.http.post<IngredientRecord[]>(`${this.baseUrl}/user`, { userId }, this.httpOptions);
   }
 
   addIngredientForUser(
-    userId: string,
-    ingredientId: string,
+    userId: number | string,
+    ingredientId: number | string,
     payload: Record<string, unknown> = {}
   ): Observable<IngredientRecord> {
     return this.http.post<IngredientRecord>(
-      `${this.baseUrl}/user/${ingredientId}`,
+      `${this.baseUrl}/user/${ingredientId}/`,
       { userId, ...payload },
       this.httpOptions
     );
   }
 
-  deleteIngredientForUser(userId: string, ingredientId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/user/${ingredientId}`, {
+  deleteIngredientForUser(
+    userId: number | string,
+    ingredientId: number | string
+  ): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/user/${ingredientId}/`, {
       body: { userId },
       ...this.httpOptions,
     });
   }
 
   updateIngredientForUser(
-    userId: string,
-    ingredientId: string,
+    userId: number | string,
+    ingredientId: number | string,
     payload: Record<string, unknown>
   ): Observable<IngredientRecord> {
     return this.http.patch<IngredientRecord>(
-      `${this.baseUrl}/user/${ingredientId}`,
+      `${this.baseUrl}/user/${ingredientId}/`,
       { userId, ...payload },
       this.httpOptions
     );
   }
 
-  getAllIngredients(): Observable<IngredientRecord[]> {
-    return this.http.get<IngredientRecord[]>(`${this.baseUrl}/ingredient`, this.httpOptions);
+  getAllIngredients(): Observable<SelectIngredient[]> {
+    return this.http.get<SelectIngredient[]>(`${this.baseUrl}/ingredient`, this.httpOptions);
   }
 
   getCurrentUser(): Observable<CurrentUser> {
     return this.http.get<CurrentUser>(`${this.baseUrl}/auth/me`, this.httpOptions);
+  }
+
+  // GET /api/user
+  getUserStocks(): Observable<IngredientRecord[]> {
+    return this.http.get<IngredientRecord[]>(`${this.baseUrl}/user`, this.httpOptions);
+  }
+
+  // POST /api/user/<ingredient_id>/
+  addUserStock(
+    ingredientId: number | string,
+    payload: Record<string, unknown> = {}
+  ): Observable<IngredientRecord> {
+    return this.http.post<IngredientRecord>(
+      `${this.baseUrl}/user/${ingredientId}/`,
+      payload,
+      this.httpOptions
+    );
+  }
+
+  // DELETE /api/user/<ingredient_id>/
+  deleteUserStock(ingredientId: number | string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/user/${ingredientId}/`, this.httpOptions);
   }
 }

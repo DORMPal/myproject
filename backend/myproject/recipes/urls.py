@@ -2,6 +2,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
+from recipes.csrf import csrf
+
 from .api import RecipeViewSet
 from .api_views import (
     IngredientDeleteWithRecipesView,
@@ -19,6 +21,7 @@ router.register(r"recipes", RecipeViewSet, basename="recipe")
 urlpatterns = [
     # ViewSet URLs
     path("", include(router.urls)),
+    path("api/auth/csrf", csrf),
 
     # DELETE /api/ingredients/<pk>/
     path(

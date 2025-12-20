@@ -1,12 +1,55 @@
 <app-header active="ingredients" />
 
+<p-dialog
+  header="Add Ingredient"
+  [(visible)]="visible"
+  [style]="{ width: '45rem', height: '300px' }"
+  modal="true"
+>
+  <div class="flex flex-column gap-3 justify-content-between h-full">
+    <div class="flex flex-column gap-3">
+      <p-select
+        [options]="ingredients$ | async"
+        [(ngModel)]="selectedIngredient"
+        optionLabel="name"
+        [filter]="true"
+        filterBy="name"
+        [showClear]="true"
+        placeholder="Select an ingredient"
+        class="w-full"
+        (onClick)="testlog()"
+        virtualScroll="true"
+        virtualScrollItemSize="50"
+        scrollHeight="270px"
+        appendTo="body"
+      ></p-select>
+
+      <p-datepicker
+        showClear="true"
+        [(ngModel)]="date"
+        placeholder="Expiration date (optional)"
+        class="w-full"
+        appendTo="body"
+      ></p-datepicker>
+    </div>
+    <div *ngIf="errorMsg" class="p-2 border border-red-300 text-red-600 rounded">
+      {{ errorMsg }}
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <p-button label="Cancel" severity="secondary" (click)="visible = false" />
+      <p-button label="Save" [loading]="saving" (click)="onSave()" />
+    </div>
+  </div>
+</p-dialog>
+
 <div class="page">
   <div class="page-header">
     <div>
       <div class="title mb-3">วัตถุดิบของฉัน</div>
       <div class="subtitle">จัดการวัตถุดิบและติดตามวันหมดอายุ</div>
     </div>
-    <p-button label="เพิ่มวัตถุดิบ" icon="pi pi-plus" styleClass="add-btn" />
+    <p-button (click)="showDialog()" label="เพิ่มวัตถุดิบ" icon="pi pi-plus" styleClass="add-btn" />
   </div>
 
   <div class="stats grid">
@@ -37,33 +80,34 @@
 
   <p-card class="table-card">
     <p-table
-      [value]="filteredIngredients"
+      [value]="filteredStocks"
       [paginator]="true"
-      [rows]="5"
-      [rowsPerPageOptions]="[5, 10, 20]"
+      [rows]="10"
+      [rowsPerPageOptions]="[10, 20, 50]"
       [responsiveLayout]="'scroll'"
+      [loading]="loading"
     >
       <ng-template pTemplate="header">
         <tr>
           <th>ชื่อ</th>
-          <th>ประเภท</th>
+          <!-- <th>จำนวน</th> -->
           <th>วันหมดอายุ</th>
           <th class="action-col">Action</th>
         </tr>
       </ng-template>
-      <ng-template pTemplate="body" let-ingredient>
+
+      <ng-template pTemplate="body" let-row>
         <tr>
-          <td>{{ ingredient.name }}</td>
-          <td>{{ ingredient.quantity }}</td>
-          <td>{{ ingredient.expires }}</td>
+          <td>{{ row.ingredient.name }}</td>
+          <!-- <td>{{ row.quantity ?? '-' }}</td> -->
+          <td>{{ row.expiration_date ?? '-' }}</td>
           <td class="actions">
-            <p-button label="แก้ไข" size="small" [text]="true" (click)="onEdit(ingredient)" />
             <p-button
               label="ลบ"
               size="small"
               [text]="true"
               severity="danger"
-              (click)="onDelete(ingredient)"
+              (click)="onDelete(row)"
             />
           </td>
         </tr>

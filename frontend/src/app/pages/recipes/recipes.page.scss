@@ -160,3 +160,57 @@ h3 {
   color: #475569;
   text-align: center;
 }
+
+/* กันทุกอย่างล้นออกจาก p-card */
+:host ::ng-deep .recipe-card .p-card-body,
+:host ::ng-deep .recipe-card .p-card-content {
+  overflow: hidden;
+}
+
+/* บังคับ carousel ไม่ให้กว้างเกิน container */
+:host ::ng-deep .recipe-carousel {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ตัว content ภายใน carousel ต้องไม่ล้น */
+:host ::ng-deep .recipe-carousel .p-carousel-content {
+  overflow: hidden;
+}
+
+/* track/list ที่เป็น flex ชอบดันให้ล้น -> บังคับให้หดได้ */
+:host ::ng-deep .recipe-carousel .p-carousel-items-container {
+  min-width: 0;
+}
+
+/* ถ้าคุณใช้ m-2 (margin) ใน item แล้วล้นบ่อย ให้ลดเป็น padding แทน */
+:host ::ng-deep .recipe-carousel .p-carousel-item {
+  padding: 0.5rem; /* แทน m-2 */
+}
+
+.recipe-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* จำนวนบรรทัด */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  line-height: 1.4;
+  max-height: calc(1.4em * 2); /* กัน layout กระโดด */
+}
+
+/* ทำให้ card สูงเท่ากันในแถวเดียว */
+.recipe-item {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ดันปุ่มไปล่างสุด */
+.recipe-item ::ng-deep .p-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.recipe-item ::ng-deep .p-card-content {
+  flex: 1;
+}

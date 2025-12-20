@@ -1,164 +1,145 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+
 import { CarouselModule } from 'primeng/carousel';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { InputTextModule } from 'primeng/inputtext';
+import { PaginatorModule } from 'primeng/paginator';
+import { CardModule } from 'primeng/card';
+
 import { HeaderComponent } from '../../shared/header/header.component';
-
-interface Recipe {
-  title: string;
-  summary: string;
-  tags: string[];
-  readyIn: string;
-  difficulty: 'Easy' | 'Intermediate' | 'Advanced';
-}
-
-interface Product {
-  name: string;
-  image: string;
-  price: number;
-  inventoryStatus: 'INSTOCK' | 'LOWSTOCK' | 'OUTOFSTOCK';
-}
+import { ApiService, RecipeDetail, TagItem } from '../../services/api.service';
 
 @Component({
   selector: 'app-recipes-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, HeaderComponent, CarouselModule, ButtonModule, TagModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    HeaderComponent,
+    CarouselModule,
+    ButtonModule,
+    TagModule,
+    InputTextModule,
+    PaginatorModule,
+    CardModule,
+  ],
   templateUrl: './recipes.page.html',
   styleUrls: ['./recipes.page.scss'],
 })
-export class RecipesPageComponent {
+export class RecipesPageComponent implements OnInit {
+  constructor(private readonly api: ApiService, private readonly router: Router) {}
+
+  // UI state
   search = '';
-  activeFilters = new Set<string>(['All']);
-  products: Product[] = [
-    {
-      name: 'ข้าวผัดกิมจิ',
-      image: 'product-application.jpg',
-      price: 9.5,
-      inventoryStatus: 'INSTOCK',
-    },
-    {
-      name: 'สปาเกตตีเบคอนพริกแห้ง',
-      image: 'product-bamboo-watch.jpg',
-      price: 12,
-      inventoryStatus: 'LOWSTOCK',
-    },
-    {
-      name: 'แกงเขียวหวานไก่',
-      image: 'product-blue-t-shirt.jpg',
-      price: 11,
-      inventoryStatus: 'INSTOCK',
-    },
-    {
-      name: 'พาสต้าครีมเห็ด',
-      image: 'product-bolt-shirt.jpg',
-      price: 10.5,
-      inventoryStatus: 'OUTOFSTOCK',
-    },
-    {
-      name: 'สลัดอกไก่ย่าง',
-      image: 'product-brown-purse.jpg',
-      price: 8,
-      inventoryStatus: 'INSTOCK',
-    },
-  ];
+  activeTag: string | null = null;
+
+  // paging (DRF page size = 20)
+  page = 1;
+  pageSize = 20;
+  totalCount = 0;
+  loading = false;
+  errorMsg: string | null = null;
+
+  // data
+  results: RecipeDetail[] = [];
+  recommended: RecipeDetail[] = [];
+  availableTags: TagItem[] = [];
 
   responsiveOptions = [
-    {
-      breakpoint: '1199px',
-      numVisible: 2,
-      numScroll: 1,
-    },
-    {
-      breakpoint: '991px',
-      numVisible: 1,
-      numScroll: 1,
-    },
-    {
-      breakpoint: '575px',
-      numVisible: 1,
-      numScroll: 1,
-    },
+    { breakpoint: '1199px', numVisible: 2, numScroll: 1 },
+    { breakpoint: '991px', numVisible: 1, numScroll: 1 },
+    { breakpoint: '575px', numVisible: 1, numScroll: 1 },
   ];
 
-  recipes: Recipe[] = [
-    {
-      title: 'Harissa Roasted Vegetables with Yogurt Drizzle',
-      summary: 'Sheet-pan dinner with crispy chickpeas and cooling herbs.',
-      tags: ['Vegetarian', 'Sheet-pan', 'Meal-prep'],
-      readyIn: '30 min',
-      difficulty: 'Easy',
-    },
-    {
-      title: 'Lemon Dill Salmon with Fennel Slaw',
-      summary: 'Bright, crunchy, and protein-heavy weeknight bowl.',
-      tags: ['Pescatarian', 'High-protein'],
-      readyIn: '25 min',
-      difficulty: 'Intermediate',
-    },
-    {
-      title: 'Gochujang Chicken Lettuce Wraps',
-      summary: 'Sticky-sweet chicken with crisp lettuce and pickled radish.',
-      tags: ['High-protein', 'Gluten-free'],
-      readyIn: '35 min',
-      difficulty: 'Intermediate',
-    },
-    {
-      title: 'Coconut Lentil Curry',
-      summary: 'Comforting, freezer-friendly curry with lime and cilantro.',
-      tags: ['Vegan', 'Comfort'],
-      readyIn: '40 min',
-      difficulty: 'Easy',
-    },
-  ];
-
-  toggleFilter(tag: string): void {
-    if (tag === 'All') {
-      this.activeFilters = new Set(['All']);
-      return;
-    }
-
-    if (this.activeFilters.has(tag)) {
-      this.activeFilters.delete(tag);
-    } else {
-      this.activeFilters.delete('All');
-      this.activeFilters.add(tag);
-    }
+  ngOnInit(): void {
+    this.fetchRecipes(1);
   }
 
-  isActive(tag: string): boolean {
-    return this.activeFilters.has(tag);
+  fetchRecipes(page: number): void {
+    this.loading = true;
+    this.errorMsg = null;
+
+    this.api
+      .getRecipes({
+        page,
+        search: this.search?.trim() || undefined,
+        tag: this.activeTag || undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.page = page;
+          this.totalCount = res.count;
+          this.results = res.results;
+
+          // recommended = เอา 8 อันแรกไปโชว์ carousel
+          this.recommended = (res.results || []).slice(0, 8);
+
+          // รวม tags จากหน้าปัจจุบัน (เอาไว้ทำ filter แบบง่าย)
+          const map = new Map<number, TagItem>();
+          for (const r of res.results || []) {
+            for (const t of r.tags || []) {
+              if (!map.has(t.id)) map.set(t.id, t);
+            }
+          }
+          this.availableTags = Array.from(map.values()).sort((a, b) =>
+            (a.name || '').localeCompare(b.name || '')
+          );
+
+          this.loading = false;
+        },
+        error: (err) => {
+          this.loading = false;
+          this.results = [];
+          this.recommended = [];
+          this.availableTags = [];
+          this.totalCount = 0;
+          this.errorMsg = 'โหลดข้อมูลไม่สำเร็จ';
+          console.error(err);
+        },
+      });
   }
 
-  visibleRecipes(): Recipe[] {
-    const query = this.search.toLowerCase().trim();
-    const filters = this.activeFilters;
-    return this.recipes.filter((recipe) => {
-      const matchesText =
-        !query ||
-        recipe.title.toLowerCase().includes(query) ||
-        recipe.summary.toLowerCase().includes(query);
-
-      if (filters.has('All')) {
-        return matchesText;
-      }
-
-      const matchesFilter = recipe.tags.some((tag) => filters.has(tag));
-      return matchesText && matchesFilter;
-    });
+  onSearch(): void {
+    this.fetchRecipes(1);
   }
 
-  getSeverity(status: Product['inventoryStatus']) {
-    switch (status) {
-      case 'INSTOCK':
-        return 'success';
-      case 'LOWSTOCK':
-        return 'warning';
-      case 'OUTOFSTOCK':
-        return 'danger';
-      default:
-        return 'info';
-    }
+  clearSearch(): void {
+    this.search = '';
+    this.fetchRecipes(1);
+  }
+
+  setTag(tagName: string | null): void {
+    this.activeTag = tagName;
+    this.fetchRecipes(1);
+  }
+
+  onPageChange(event: any): void {
+    // PrimeNG paginator uses "first" (index) and "rows"
+    const newPage = Math.floor((event.first || 0) / (event.rows || this.pageSize)) + 1;
+    this.fetchRecipes(newPage);
+  }
+
+  // รูป base64 จาก backend มาเป็น data-url แล้ว ใช้ได้เลย
+  thumbSrc(recipe: RecipeDetail): string | null {
+    return recipe.thumbnail?.data || null;
+  }
+
+  // ถ้าคุณยังไม่มี route detail ก็ปล่อยแค่ console ไว้ก่อน
+  openRecipe(recipe: RecipeDetail): void {
+    // ถ้ามีหน้า detail เช่น /page/recipes/:id ค่อยเปลี่ยนเป็น navigate ได้
+    // this.router.navigate(['/page/recipes', recipe.id]);
+    console.log('open recipe:', recipe.id);
+  }
+
+  trackByRecipeId(_index: number, item: RecipeDetail): number {
+    return item.id;
+  }
+
+  trackByTagId(_index: number, item: TagItem): number {
+    return item.id;
   }
 }

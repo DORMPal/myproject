@@ -1,49 +1,194 @@
 <app-header active="recipes" />
 
 <div class="page">
+  <!-- RECOMMENDED -->
   <section class="section">
     <div class="section-title">เมนูแนะนำจากวัตถุดิบ</div>
-    <div class="card">
-      <p-carousel
-        [value]="products"
-        [numVisible]="3"
-        [numScroll]="1"
-        [circular]="true"
-        [responsiveOptions]="responsiveOptions"
-        autoplayInterval="3000"
-      >
-        <ng-template pTemplate="item" let-product>
-          <div class="border border-surface-200 dark:border-surface-700 rounded m-2 p-4">
-            <div class="mb-4">
-              <div class="relative mx-auto">
-                <img
-                  src="https://primefaces.org/cdn/primeng/images/demo/product/{{ product.image }}"
-                  [alt]="product.name"
-                  class="w-full rounded-border"
-                />
-                <p-tag
-                  [value]="product.inventoryStatus"
-                  class="absolute dark:!bg-surface-900"
-                  [ngStyle]="{ 'left.px': 5, 'top.px': 5 }"
-                />
+
+    <p-card class="card recipe-card">
+      <ng-container *ngIf="loading; else recBlock">
+        <div class="p-4">กำลังโหลด...</div>
+      </ng-container>
+
+      <ng-template #recBlock>
+        <ng-container *ngIf="recommended.length > 0; else noRec">
+          <p-carousel
+            [value]="recommended"
+            [numVisible]="3"
+            [numScroll]="1"
+            [circular]="true"
+            [showNavigators]="true"
+            [showIndicators]="false"
+          >
+            <ng-template pTemplate="item" let-recipe>
+              <div class="border border-surface-200 dark:border-surface-700 rounded p-4">
+                <div class="mb-3">
+                  <img
+                    *ngIf="thumbSrc(recipe); else noImg"
+                    [src]="thumbSrc(recipe)!"
+                    [alt]="recipe.title"
+                    class="w-full rounded-border"
+                    style="max-height: 180px; object-fit: cover"
+                  />
+                  <ng-template #noImg>
+                    <div
+                      class="w-full rounded-border border border-surface-200 flex align-items-center justify-content-center"
+                      style="height: 180px"
+                    >
+                      No Image
+                    </div>
+                  </ng-template>
+                </div>
+
+                <div class="mb-2 font-medium text-black-alpha-90">{{ recipe.title }}</div>
+                <!-- <div class="text-sm opacity-80 mb-3 text-black-alpha-90 recipe-desc">
+                  {{ recipe.short_detail }}
+                </div> -->
+
+                <div class="text-black-alpha-90 flex gap-2 mb-3">
+                  <div>
+                    <i class="pi pi-gauge mr-2"></i>
+                    <span>{{ recipe.level }}</span>
+                  </div>
+                  <div>
+                    <i class="pi pi-user mr-2"></i>
+                    <span>{{ recipe.servings ?? 0 }} คน</span>
+                  </div>
+                </div>
+                <div class="flex justify-content-end mb-3">
+                  <p-button
+                    label="ดูเมนู"
+                    icon="pi pi-arrow-right"
+                    (click)="openRecipe(recipe)"
+                    size="small"
+                  />
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <p-tag
+                    *ngFor="let t of recipe.tags; trackBy: trackByTagId"
+                    [value]="t.name"
+                  ></p-tag>
+                </div>
               </div>
-            </div>
-            <div class="mb-4 font-medium">{{ product.name }}</div>
-            <div class="flex justify-between items-center">
-              <div class="mt-0 font-semibold text-xl">{{ '$' + product.price }}</div>
-              <span>
-                <p-button icon="pi pi-heart" severity="secondary" [outlined]="true" />
-                <p-button icon="pi pi-shopping-cart" styleClass="ml-2" />
-              </span>
-            </div>
-          </div>
+            </ng-template>
+          </p-carousel>
+        </ng-container>
+
+        <ng-template #noRec>
+          <div class="p-4 opacity-80">ยังไม่มีข้อมูลแนะนำ</div>
         </ng-template>
-      </p-carousel>
-    </div>
+      </ng-template>
+    </p-card>
   </section>
 
+  <!-- ALL RECIPES -->
   <section class="section">
     <div class="section-title">เมนูทั้งหมด</div>
-    <div></div>
+
+    <!-- SEARCH + TAG FILTER -->
+    <div class="flex flex-column gap-3 mb-3">
+      <div class="flex gap-2 align-items-center">
+        <span class="p-input-icon-left w-full">
+          <i class="pi pi-search"></i>
+          <input
+            pInputText
+            type="text"
+            class="w-full"
+            [(ngModel)]="search"
+            placeholder="ค้นหาเมนู..."
+            (keydown.enter)="onSearch()"
+          />
+        </span>
+
+        <p-button label="ค้นหา" icon="pi pi-search" (click)="onSearch()" />
+        <p-button label="ล้าง" icon="pi pi-times" severity="secondary" (click)="clearSearch()" />
+      </div>
+
+      <div class="flex flex-wrap gap-2 align-items-center">
+        <p-button
+          label="All"
+          [outlined]="activeTag !== null"
+          (click)="setTag(null)"
+          size="small"
+        ></p-button>
+
+        <p-button
+          *ngFor="let t of availableTags; trackBy: trackByTagId"
+          [label]="t.name"
+          [outlined]="activeTag !== t.name"
+          (click)="setTag(t.name)"
+          size="small"
+        ></p-button>
+      </div>
+    </div>
+
+    <!-- ERROR -->
+    <div *ngIf="errorMsg" class="p-3 mb-3 border border-red-300 text-red-600 rounded">
+      {{ errorMsg }}
+    </div>
+
+    <!-- LIST -->
+    <div class="grid">
+      <div class="" *ngFor="let r of results; trackBy: trackByRecipeId">
+        <p-card class="h-full">
+          <div class="mb-3 recipe-item">
+            <img
+              *ngIf="thumbSrc(r); else listNoImg"
+              [src]="thumbSrc(r)!"
+              [alt]="r.title"
+              class="w-full rounded-border"
+              style="max-height: 180px; object-fit: cover"
+            />
+            <ng-template #listNoImg>
+              <div
+                class="w-full rounded-border border border-surface-200 flex align-items-center justify-content-center"
+                style="height: 180px"
+              >
+                No Image
+              </div>
+            </ng-template>
+          </div>
+
+          <div class="font-medium mb-2">{{ r.title }}</div>
+          <!-- <div class="text-sm opacity-80 mb-3 ">
+            {{ r.short_detail }}
+          </div> -->
+          <div class="flex gap-2 mb-3">
+            <div>
+              <i class="pi pi-gauge mr-2"></i>
+              <span>{{ r.level }}</span>
+            </div>
+            <div>
+              <i class="pi pi-user mr-2"></i>
+              <span>{{ r.servings ?? 0 }} คน</span>
+            </div>
+          </div>
+
+          <div class="flex justify-content-end mb-3">
+            <p-button
+              label="ดูเมนู"
+              icon="pi pi-arrow-right"
+              (click)="openRecipe(r)"
+              size="small"
+            />
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <p-tag *ngFor="let t of r.tags; trackBy: trackByTagId" [value]="t.name"></p-tag>
+          </div>
+        </p-card>
+      </div>
+    </div>
+
+    <!-- PAGINATOR -->
+    <div class="mt-4">
+      <p-paginator
+        [rows]="pageSize"
+        [totalRecords]="totalCount"
+        [first]="(page - 1) * pageSize"
+        (onPageChange)="onPageChange($event)"
+      ></p-paginator>
+    </div>
   </section>
 </div>

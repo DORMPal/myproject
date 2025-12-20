@@ -122,3 +122,11 @@
     font-size: 2rem;
   }
 }
+
+::ng-deep .p-dialog-content {
+  height: 100% !important;
+}
+
+::ng-deep .p-datepicker-input {
+  width: 100% !important;
+}
