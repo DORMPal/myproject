@@ -9,6 +9,8 @@ import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
 import { PaginatorModule } from 'primeng/paginator';
 import { CardModule } from 'primeng/card';
+import { DialogModule } from 'primeng/dialog';
+import { StepperModule } from 'primeng/stepper';
 
 import { HeaderComponent } from '../../shared/header/header.component';
 import { ApiService, RecipeDetail, TagItem } from '../../services/api.service';
@@ -26,6 +28,8 @@ import { ApiService, RecipeDetail, TagItem } from '../../services/api.service';
     InputTextModule,
     PaginatorModule,
     CardModule,
+    DialogModule,
+    StepperModule,
   ],
   templateUrl: './recipes.page.html',
   styleUrls: ['./recipes.page.scss'],
@@ -49,10 +53,16 @@ export class RecipesPageComponent implements OnInit {
   recommended: RecipeDetail[] = [];
   availableTags: TagItem[] = [];
 
+  // modal detail state
+  detailVisible = false;
+  detailLoading = false;
+  detailError: string | null = null;
+  detailRecipe: RecipeDetail | null = null;
+  detailSteps: string[] = []; // each step HTML/text
+
   responsiveOptions = [
-    { breakpoint: '1199px', numVisible: 2, numScroll: 1 },
-    { breakpoint: '991px', numVisible: 1, numScroll: 1 },
-    { breakpoint: '575px', numVisible: 1, numScroll: 1 },
+    { breakpoint: '1024px', numVisible: 2, numScroll: 1 },
+    { breakpoint: '768px', numVisible: 1, numScroll: 1 },
   ];
 
   ngOnInit(): void {
@@ -75,10 +85,8 @@ export class RecipesPageComponent implements OnInit {
           this.totalCount = res.count;
           this.results = res.results;
 
-          // recommended = เอา 8 อันแรกไปโชว์ carousel
           this.recommended = (res.results || []).slice(0, 8);
 
-          // รวม tags จากหน้าปัจจุบัน (เอาไว้ทำ filter แบบง่าย)
           const map = new Map<number, TagItem>();
           for (const r of res.results || []) {
             for (const t of r.tags || []) {
@@ -118,21 +126,41 @@ export class RecipesPageComponent implements OnInit {
   }
 
   onPageChange(event: any): void {
-    // PrimeNG paginator uses "first" (index) and "rows"
     const newPage = Math.floor((event.first || 0) / (event.rows || this.pageSize)) + 1;
     this.fetchRecipes(newPage);
   }
 
-  // รูป base64 จาก backend มาเป็น data-url แล้ว ใช้ได้เลย
   thumbSrc(recipe: RecipeDetail): string | null {
     return recipe.thumbnail?.data || null;
   }
 
-  // ถ้าคุณยังไม่มี route detail ก็ปล่อยแค่ console ไว้ก่อน
+  /** ✅ click "ดูเมนู" -> fetch detail -> show dialog */
   openRecipe(recipe: RecipeDetail): void {
-    // ถ้ามีหน้า detail เช่น /page/recipes/:id ค่อยเปลี่ยนเป็น navigate ได้
-    // this.router.navigate(['/page/recipes', recipe.id]);
-    console.log('open recipe:', recipe.id);
+    this.detailVisible = true;
+    this.detailLoading = true;
+    this.detailError = null;
+    this.detailRecipe = null;
+    this.detailSteps = [];
+
+    this.api.getRecipeById(recipe.id).subscribe({
+      next: (detail) => {
+        this.detailRecipe = detail;
+        this.detailSteps = this.extractStepsFromInstructions(detail.instructions);
+        this.detailLoading = false;
+      },
+      error: (err) => {
+        this.detailLoading = false;
+        this.detailError = 'โหลดรายละเอียดเมนูไม่สำเร็จ';
+        console.error(err);
+      },
+    });
+  }
+
+  onCloseDetail(): void {
+    // optional reset
+    // this.detailRecipe = null;
+    // this.detailSteps = [];
+    // this.detailError = null;
   }
 
   trackByRecipeId(_index: number, item: RecipeDetail): number {
@@ -141,5 +169,36 @@ export class RecipesPageComponent implements OnInit {
 
   trackByTagId(_index: number, item: TagItem): number {
     return item.id;
+  }
+
+  /** ✅ Parse <ol><li>..</li></ol> -> [step1, step2, ...] (HTML-safe-ish) */
+  private extractStepsFromInstructions(instructions: string | null): string[] {
+    if (!instructions) return [];
+
+    // normalize
+    const html = instructions.replace(/\r?\n/g, ' ');
+
+    // grab li blocks (keeps inner html)
+    const liMatches = html.match(/<li\b[^>]*>[\s\S]*?<\/li>/gi);
+    if (liMatches && liMatches.length) {
+      return liMatches.map((li) => {
+        // remove the outer <li> tags but keep inner formatting
+        return li
+          .replace(/^<li\b[^>]*>/i, '')
+          .replace(/<\/li>$/i, '')
+          .trim();
+      });
+    }
+
+    // fallback: strip tags + split by period-ish (very rough)
+    const text = html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!text) return [];
+    return text
+      .split(' . ')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 }
