@@ -69,6 +69,21 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
+export interface RecommendationResult extends RecipeDetail {
+  missing_ingredient_count: number;
+  match_percentage: number;
+  missing_ingredients: string[];
+  total_considered_ingredients: number;
+  matched_ingredients: number;
+}
+
+export interface RecommendationResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: RecommendationResult[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -98,6 +113,11 @@ export class ApiService {
   // GET /api/recipes/<id>/
   getRecipeById(recipeId: number | string): Observable<RecipeDetail> {
     return this.http.get<RecipeDetail>(`${this.baseUrl}/recipes/${recipeId}/`, this.httpOptions);
+  }
+
+  // GET /api/recommend (top 10)
+  getRecommendedRecipes(): Observable<RecommendationResponse> {
+    return this.http.get<RecommendationResponse>(`${this.baseUrl}/recommend`, this.httpOptions);
   }
 
   getIngredientsByUserId(userId: number | string): Observable<IngredientRecord[]> {

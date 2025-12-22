@@ -1,8 +1,14 @@
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from recipes.models import Recipe
+from django.db.models import Prefetch
+
+from recipes.models import Recipe, RecipeIngredient, UserStock
 from recipes.serializers import RecipeSerializer
 
 
@@ -32,3 +38,118 @@ class RecipeViewSet(ReadOnlyModelViewSet):
         if tag_name:
             qs = qs.filter(tags__name=tag_name)
         return qs
+
+    @staticmethod
+    def _build_recommendations(request, queryset, limit=None):
+        """
+        Core recommendation builder used by both the action and standalone endpoint.
+        """
+        user_ingredient_ids = set(
+            UserStock.objects.filter(user=request.user, disable=False).values_list(
+                "ingredient_id", flat=True
+            )
+        )
+
+        recipe_ing_qs = RecipeIngredient.objects.select_related("ingredient")
+        recipes = queryset.prefetch_related(
+            Prefetch("recipe_ingredients", queryset=recipe_ing_qs),
+            "tags",
+        )
+
+        recommendation_rows = []
+        for recipe in recipes:
+            considered = [
+                ri
+                for ri in recipe.recipe_ingredients.all()
+                if ri.ingredient and not ri.ingredient.common
+            ]
+            total_considered = len(considered)
+            matched = sum(1 for ri in considered if ri.ingredient_id in user_ingredient_ids)
+
+            # Skip recipes that match none of the considered ingredients
+            if total_considered > 0 and matched == 0:
+                continue
+
+            missing = total_considered - matched
+            match_percentage = (
+                100.0 if total_considered == 0 else round((matched / total_considered) * 100, 2)
+            )
+            missing_names = [
+                ri.ingredient.name
+                for ri in considered
+                if ri.ingredient_id not in user_ingredient_ids
+            ]
+
+            recommendation_rows.append(
+                {
+                    "recipe": recipe,
+                    "missing_ingredient_count": missing,
+                    "match_percentage": match_percentage,
+                    "missing_ingredients": missing_names,
+                    "total_considered_ingredients": total_considered,
+                    "matched_ingredients": matched,
+                }
+            )
+
+        recommendation_rows.sort(
+            key=lambda item: (
+                item["missing_ingredient_count"],
+                -item["match_percentage"],
+                item["recipe"].id,
+            )
+        )
+
+        if limit is not None:
+            recommendation_rows = recommendation_rows[:limit]
+
+        serialized_recipes = RecipeSerializer(
+            [item["recipe"] for item in recommendation_rows],
+            many=True,
+            context={"request": request},
+        ).data
+
+        results = []
+        for serialized, extra in zip(serialized_recipes, recommendation_rows):
+            serialized["missing_ingredient_count"] = extra["missing_ingredient_count"]
+            serialized["match_percentage"] = extra["match_percentage"]
+            serialized["missing_ingredients"] = extra["missing_ingredients"]
+            serialized["total_considered_ingredients"] = extra["total_considered_ingredients"]
+            serialized["matched_ingredients"] = extra["matched_ingredients"]
+            results.append(serialized)
+
+        return results
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="recommendations",
+        permission_classes=[IsAuthenticated],
+    )
+    def recommendations(self, request):
+        """
+        Recommend recipes based on the user's active ingredients (top 10).
+        Ranking: fewest missing non-common ingredients, then highest match percentage.
+        """
+        results = self._build_recommendations(
+            request,
+            self.get_queryset().select_related("thumbnail_obj"),
+            limit=10,
+        )
+        return Response({"count": len(results), "next": None, "previous": None, "results": results})
+
+
+class RecipeRecommendView(APIView):
+    """
+    Standalone endpoint: GET /api/recommend (top 10 recommendations).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        recipe_qs = Recipe.objects.all().order_by("-created_at").select_related("thumbnail_obj")
+        results = RecipeViewSet._build_recommendations(
+            request,
+            recipe_qs,
+            limit=10,
+        )
+        return Response({"count": len(results), "next": None, "previous": None, "results": results})

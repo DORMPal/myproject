@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from recipes.csrf import csrf
 
-from .api import RecipeViewSet
+from .api import RecipeViewSet, RecipeRecommendView
 from .api_views import (
     IngredientDeleteWithRecipesView,
     UserIngredientListView,
@@ -48,4 +48,6 @@ urlpatterns = [
     path("ingredient", IngredientListView.as_view(), name="ingredient-list"),
     # GET /api/auth/me (session-based)
     path("auth/me", MeView.as_view(), name="auth-me"),
+    # GET /api/recommend (top 10)
+    path("recommend", RecipeRecommendView.as_view(), name="recipe-recommend"),
 ]

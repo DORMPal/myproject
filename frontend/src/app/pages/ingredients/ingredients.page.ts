@@ -104,7 +104,7 @@ export class IngredientsPageComponent implements OnInit {
     console.log('daysLeft=', daysLeft);
     const shouldDisable = daysLeft <= 0.0000000001; // <0 expired, 0-3 near expired
 
-    if (daysLeft < 0) {
+    if (daysLeft <= 0) {
       this.toast.add({ severity: 'error', summary: 'หมดอายุแล้ว', detail: 'วัตถุดิบหมดอายุแล้ว' });
     } else if (daysLeft < 4) {
       this.toast.add({ severity: 'warn', summary: 'ใกล้หมดอายุ', detail: 'วัตถุดิบใกล้หมดอายุ' });
@@ -153,7 +153,7 @@ export class IngredientsPageComponent implements OnInit {
     return this.stocks.filter((s) => {
       if (!s.expiration_date) return false;
       const d = this.stripTime(new Date(s.expiration_date));
-      return d >= now && d <= soon;
+      return d > now && d <= soon;
     }).length;
   }
 
@@ -161,7 +161,7 @@ export class IngredientsPageComponent implements OnInit {
     const now = this.stripTime(new Date());
     return this.stocks.filter((s) => {
       if (!s.expiration_date) return false;
-      return this.stripTime(new Date(s.expiration_date)) < now;
+      return this.stripTime(new Date(s.expiration_date)) <= now;
     }).length;
   }
 

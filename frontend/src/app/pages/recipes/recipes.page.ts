@@ -19,6 +19,7 @@ import {
   IngredientRecord,
   RecipeDetail,
   RecipeIngredientItem,
+  RecommendationResult,
   TagItem,
 } from '../../services/api.service';
 
@@ -64,7 +65,7 @@ export class RecipesPageComponent implements OnInit {
 
   // data
   results: RecipeDetail[] = [];
-  recommended: RecipeDetail[] = [];
+  recommended: RecommendationResult[] = [];
   availableTags: TagItem[] = [];
 
   // modal detail state
@@ -90,6 +91,7 @@ export class RecipesPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.fetchRecipes(1);
+    this.fetchRecommended();
   }
 
   fetchRecipes(page: number): void {
@@ -108,8 +110,6 @@ export class RecipesPageComponent implements OnInit {
           this.totalCount = res.count;
           this.results = res.results;
 
-          this.recommended = (res.results || []).slice(0, 8);
-
           const map = new Map<number, TagItem>();
           for (const r of res.results || []) {
             for (const t of r.tags || []) {
@@ -125,13 +125,24 @@ export class RecipesPageComponent implements OnInit {
         error: (err) => {
           this.loading = false;
           this.results = [];
-          this.recommended = [];
           this.availableTags = [];
           this.totalCount = 0;
           this.errorMsg = 'โหลดข้อมูลไม่สำเร็จ';
           console.error(err);
         },
       });
+  }
+
+  private fetchRecommended(): void {
+    this.api.getRecommendedRecipes().subscribe({
+      next: (res) => {
+        this.recommended = res.results || [];
+      },
+      error: (err) => {
+        console.error(err);
+        this.recommended = [];
+      },
+    });
   }
 
   onSearch(): void {
