@@ -61,9 +61,13 @@
           <!-- headers -->
           <p-step-list>
             <p-step [value]="1">วัตถุดิบ</p-step>
+
             <p-step *ngFor="let s of detailSteps; let i = index" [value]="i + 2">
               ขั้นตอน {{ i + 1 }}
             </p-step>
+
+            <!-- ✅ LAST: delete ingredients -->
+            <p-step [value]="detailSteps.length + 2">ลบวัตถุดิบ</p-step>
           </p-step-list>
 
           <!-- panels -->
@@ -86,22 +90,22 @@
                   </ul>
                 </div>
 
-                <div class="flex pt-4 justify-content-end" *ngIf="detailSteps.length > 0">
+                <div class="flex pt-4 justify-content-end">
                   <p-button
+                    *ngIf="detailSteps.length > 0; else goDeleteFromIngredients"
                     label="Next"
                     icon="pi pi-arrow-right"
                     iconPos="right"
                     (onClick)="activateCallback(2)"
                   />
-                </div>
-
-                <div class="flex pt-4 justify-content-end" *ngIf="detailSteps.length === 0">
-                  <p-button
-                    label="ปิด"
-                    severity="secondary"
-                    icon="pi pi-times"
-                    (onClick)="detailVisible = false"
-                  />
+                  <ng-template #goDeleteFromIngredients>
+                    <p-button
+                      label="ไปหน้าลบวัตถุดิบ"
+                      icon="pi pi-trash"
+                      severity="danger"
+                      (onClick)="activateCallback(detailSteps.length + 2)"
+                    />
+                  </ng-template>
                 </div>
               </ng-template>
             </p-step-panel>
@@ -111,8 +115,6 @@
               <ng-template #content let-activateCallback="activateCallback">
                 <div class="flex flex-column gap-3">
                   <div class="font-semibold">ขั้นตอน {{ i + 1 }}</div>
-
-                  <!-- step content (HTML from backend) -->
                   <div class="leading-6" [innerHTML]="step"></div>
                 </div>
 
@@ -124,7 +126,7 @@
                     (onClick)="activateCallback(i + 1)"
                   />
 
-                  <ng-container *ngIf="i < detailSteps.length - 1; else lastStepButtons">
+                  <ng-container *ngIf="i < detailSteps.length - 1; else lastStepToDelete">
                     <p-button
                       label="Next"
                       icon="pi pi-arrow-right"
@@ -133,14 +135,176 @@
                     />
                   </ng-container>
 
-                  <ng-template #lastStepButtons>
-                    <p-button label="ปิด" icon="pi pi-check" (onClick)="detailVisible = false" />
+                  <!-- ✅ from last cooking step -> go delete panel -->
+                  <ng-template #lastStepToDelete>
+                    <p-button
+                      label="ไปหน้าลบวัตถุดิบ"
+                      icon="pi pi-trash"
+                      severity="danger"
+                      (onClick)="activateCallback(detailSteps.length + 2)"
+                    />
                   </ng-template>
+                </div>
+              </ng-template>
+            </p-step-panel>
+
+            <!-- ✅ LAST PANEL: Delete ingredients from user stock -->
+            <p-step-panel [value]="detailSteps.length + 2">
+              <ng-template #content let-activateCallback="activateCallback">
+                <div class="font-semibold mb-2">ลบวัตถุดิบของฉันสำหรับเมนูนี้</div>
+
+                <div *ngIf="userStocksLoading" class="p-2">กำลังตรวจสอบวัตถุดิบของคุณ...</div>
+
+                <div *ngIf="userStockError" class="p-2 border border-red-300 text-red-600 rounded">
+                  {{ userStockError }}
+                </div>
+
+                <ng-container *ngIf="!userStocksLoading && !userStockError">
+                  <div *ngIf="intersectingIngredients.length === 0" class="p-2 opacity-80">
+                    คุณยังไม่มีวัตถุดิบที่ตรงกับเมนูนี้
+                  </div>
+
+                  <div *ngIf="intersectingIngredients.length > 0" class="flex flex-column gap-2">
+                    <label
+                      class="flex align-items-center gap-2"
+                      *ngFor="let item of intersectingIngredients"
+                      [for]="'ing-' + item.ingredientId"
+                    >
+                      <p-checkbox
+                        [binary]="true"
+                        [inputId]="'ing-' + item.ingredientId"
+                        [ngModel]="selectedIngredientIds.has(item.ingredientId)"
+                        (onChange)="toggleIngredientSelection(item.ingredientId, $event.checked)"
+                      ></p-checkbox>
+
+                      <div class="flex flex-column">
+                        <span class="font-medium">{{ item.recipeIngredient.ingredient_name }}</span>
+                        <span class="opacity-70 text-sm">
+                          {{ item.recipeIngredient.required_quantity ?? '' }}
+                          {{ item.recipeIngredient.required_unit ?? '' }}
+                          <span *ngIf="item.recipeIngredient.group_name">
+                            ({{ item.recipeIngredient.group_name }})
+                          </span>
+                        </span>
+                      </div>
+                    </label>
+
+                    <div class="mt-3 flex flex-wrap gap-2 align-items-center">
+                      <p-button
+                        label="ลบออกจากวัตถุดิบของฉัน"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [disabled]="selectedIngredientIds.size === 0"
+                        [loading]="bulkDeleteLoading"
+                        (onClick)="removeSelectedIngredients()"
+                      />
+                      <span class="text-sm opacity-80">ติ๊กวัตถุดิบที่ใช้หมดแล้ว</span>
+                    </div>
+
+                    <div
+                      *ngIf="bulkDeleteError"
+                      class="p-2 mt-2 border border-red-300 text-red-600 rounded"
+                    >
+                      {{ bulkDeleteError }}
+                    </div>
+
+                    <div
+                      *ngIf="bulkDeleteSuccess"
+                      class="p-2 mt-2 border border-green-300 text-green-700 rounded"
+                    >
+                      {{ bulkDeleteSuccess }}
+                    </div>
+                  </div>
+                </ng-container>
+
+                <div class="flex pt-4 justify-content-between">
+                  <!-- back to last cooking step if exists, else back to ingredients -->
+                  <p-button
+                    label="Back"
+                    severity="secondary"
+                    icon="pi pi-arrow-left"
+                    (onClick)="
+                      activateCallback(detailSteps.length > 0 ? detailSteps.length + 1 : 1)
+                    "
+                  />
+
+                  <p-button label="ปิด" icon="pi pi-check" (onClick)="detailVisible = false" />
                 </div>
               </ng-template>
             </p-step-panel>
           </p-step-panels>
         </p-stepper>
+
+        <!-- USER INGREDIENT INTERSECTION -->
+        <!-- <div class="mt-4">
+          <div class="font-semibold mb-2">วัตถุดิบที่คุณมีสำหรับเมนูนี้</div>
+
+          <div *ngIf="userStocksLoading" class="p-2">กำลังตรวจสอบวัตถุดิบของคุณ...</div>
+
+          <div *ngIf="userStockError" class="p-2 border border-red-300 text-red-600 rounded">
+            {{ userStockError }}
+          </div>
+
+          <ng-container *ngIf="!userStocksLoading && !userStockError">
+            <div *ngIf="intersectingIngredients.length === 0" class="p-2 opacity-80">
+              คุณยังไม่มีวัตถุดิบที่ตรงกับเมนูนี้
+            </div>
+
+            <div *ngIf="intersectingIngredients.length > 0" class="flex flex-column gap-2">
+              <label
+                class="flex align-items-center gap-2"
+                *ngFor="let item of intersectingIngredients"
+                [for]="'ing-' + item.ingredientId"
+              >
+                <p-checkbox
+                  [binary]="true"
+                  [inputId]="'ing-' + item.ingredientId"
+                  [ngModel]="selectedIngredientIds.has(item.ingredientId)"
+                  (onChange)="toggleIngredientSelection(item.ingredientId, $event.checked)"
+                ></p-checkbox>
+                <div class="flex flex-column">
+                  <span class="font-medium">{{ item.recipeIngredient.ingredient_name }}</span>
+                  <span class="opacity-70 text-sm">
+                    {{ item.recipeIngredient.required_quantity ?? '' }}
+                    {{ item.recipeIngredient.required_unit ?? '' }}
+                    <span *ngIf="item.recipeIngredient.group_name">
+                      ({{ item.recipeIngredient.group_name }})
+                    </span>
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            <div
+              class="mt-3 flex flex-wrap gap-2 align-items-center"
+              *ngIf="intersectingIngredients.length > 0"
+            >
+              <p-button
+                label="ลบออกจากวัตถุดิบของฉัน"
+                icon="pi pi-trash"
+                severity="danger"
+                [disabled]="selectedIngredientIds.size === 0"
+                [loading]="bulkDeleteLoading"
+                (onClick)="removeSelectedIngredients()"
+              />
+              <span class="text-sm opacity-80">ติ๊กวัตถุดิบที่ใช้หมดแล้ว</span>
+            </div>
+
+            <div
+              *ngIf="bulkDeleteError"
+              class="p-2 mt-2 border border-red-300 text-red-600 rounded"
+            >
+              {{ bulkDeleteError }}
+            </div>
+
+            <div
+              *ngIf="bulkDeleteSuccess"
+              class="p-2 mt-2 border border-green-300 text-green-700 rounded"
+            >
+              {{ bulkDeleteSuccess }}
+            </div>
+          </ng-container>
+        </div> -->
       </ng-container>
     </ng-template>
   </p-dialog>

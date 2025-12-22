@@ -11,9 +11,22 @@ import { PaginatorModule } from 'primeng/paginator';
 import { CardModule } from 'primeng/card';
 import { DialogModule } from 'primeng/dialog';
 import { StepperModule } from 'primeng/stepper';
+import { CheckboxModule } from 'primeng/checkbox';
 
 import { HeaderComponent } from '../../shared/header/header.component';
-import { ApiService, RecipeDetail, TagItem } from '../../services/api.service';
+import {
+  ApiService,
+  IngredientRecord,
+  RecipeDetail,
+  RecipeIngredientItem,
+  TagItem,
+} from '../../services/api.service';
+
+type IntersectedIngredient = {
+  ingredientId: number;
+  recipeIngredient: RecipeIngredientItem;
+  stock: IngredientRecord;
+};
 
 @Component({
   selector: 'app-recipes-page',
@@ -30,6 +43,7 @@ import { ApiService, RecipeDetail, TagItem } from '../../services/api.service';
     CardModule,
     DialogModule,
     StepperModule,
+    CheckboxModule,
   ],
   templateUrl: './recipes.page.html',
   styleUrls: ['./recipes.page.scss'],
@@ -59,6 +73,15 @@ export class RecipesPageComponent implements OnInit {
   detailError: string | null = null;
   detailRecipe: RecipeDetail | null = null;
   detailSteps: string[] = []; // each step HTML/text
+  userStocks: IngredientRecord[] = [];
+  userStocksLoaded = false;
+  userStocksLoading = false;
+  userStockError: string | null = null;
+  intersectingIngredients: IntersectedIngredient[] = [];
+  selectedIngredientIds = new Set<number>();
+  bulkDeleteLoading = false;
+  bulkDeleteError: string | null = null;
+  bulkDeleteSuccess: string | null = null;
 
   responsiveOptions = [
     { breakpoint: '1024px', numVisible: 2, numScroll: 1 },
@@ -141,11 +164,16 @@ export class RecipesPageComponent implements OnInit {
     this.detailError = null;
     this.detailRecipe = null;
     this.detailSteps = [];
+    this.selectedIngredientIds.clear();
+    this.bulkDeleteError = null;
+    this.bulkDeleteSuccess = null;
 
+    this.loadUserStocksIfNeeded();
     this.api.getRecipeById(recipe.id).subscribe({
       next: (detail) => {
         this.detailRecipe = detail;
         this.detailSteps = this.extractStepsFromInstructions(detail.instructions);
+        this.updateIntersectingIngredients();
         this.detailLoading = false;
       },
       error: (err) => {
@@ -169,6 +197,45 @@ export class RecipesPageComponent implements OnInit {
 
   trackByTagId(_index: number, item: TagItem): number {
     return item.id;
+  }
+
+  toggleIngredientSelection(ingredientId: number, checked: boolean): void {
+    if (checked) {
+      this.selectedIngredientIds.add(ingredientId);
+    } else {
+      this.selectedIngredientIds.delete(ingredientId);
+    }
+  }
+
+  removeSelectedIngredients(): void {
+    if (this.selectedIngredientIds.size === 0) {
+      this.bulkDeleteError = 'กรุณาเลือกวัตถุดิบที่ต้องการลบ';
+      return;
+    }
+
+    this.bulkDeleteError = null;
+    this.bulkDeleteSuccess = null;
+    this.bulkDeleteLoading = true;
+
+    const ids = Array.from(this.selectedIngredientIds);
+    this.api.deleteUserIngredients(ids).subscribe({
+      next: (res) => {
+        this.bulkDeleteLoading = false;
+        this.bulkDeleteSuccess = 'ลบวัตถุดิบออกจากสต็อกแล้ว';
+        // remove local stocks that were deleted
+        const idSet = new Set(ids);
+        this.userStocks = this.userStocks.filter(
+          (s) => !idSet.has(this.ingredientIdFromStock(s) ?? -1)
+        );
+        this.selectedIngredientIds.clear();
+        this.updateIntersectingIngredients();
+      },
+      error: (err) => {
+        console.error(err);
+        this.bulkDeleteLoading = false;
+        this.bulkDeleteError = 'ลบวัตถุดิบไม่สำเร็จ (ตรวจสอบการเข้าสู่ระบบ)';
+      },
+    });
   }
 
   /** ✅ Parse <ol><li>..</li></ol> -> [step1, step2, ...] (HTML-safe-ish) */
@@ -200,5 +267,75 @@ export class RecipesPageComponent implements OnInit {
       .split(' . ')
       .map((s) => s.trim())
       .filter(Boolean);
+  }
+
+  private loadUserStocksIfNeeded(): void {
+    if (this.userStocksLoaded || this.userStocksLoading) {
+      this.updateIntersectingIngredients();
+      return;
+    }
+
+    this.userStocksLoading = true;
+    this.userStockError = null;
+    this.api.getUserStocks().subscribe({
+      next: (rows) => {
+        this.userStocks = rows || [];
+        this.userStocksLoaded = true;
+        this.userStocksLoading = false;
+        this.updateIntersectingIngredients();
+      },
+      error: (err) => {
+        console.error(err);
+        this.userStocks = [];
+        this.userStocksLoaded = false;
+        this.userStocksLoading = false;
+        this.userStockError = 'โหลดวัตถุดิบของคุณไม่สำเร็จ (ต้องเข้าสู่ระบบ)';
+        this.updateIntersectingIngredients();
+      },
+    });
+  }
+
+  private ingredientIdFromStock(stock: IngredientRecord): number | null {
+    const id = (stock.ingredient as any)?.id ?? (stock as any).ingredient_id;
+    return typeof id === 'number' ? id : null;
+  }
+
+  private updateIntersectingIngredients(): void {
+    if (!this.detailRecipe) {
+      this.intersectingIngredients = [];
+      return;
+    }
+
+    const stockMap = new Map<string, IngredientRecord>();
+    for (const stock of this.userStocks || []) {
+      const key = (stock.ingredient?.name || (stock as any).ingredient_name || '')
+        .trim()
+        .toLowerCase();
+      if (key) stockMap.set(key, stock);
+    }
+
+    const list: IntersectedIngredient[] = [];
+    const seen = new Set<number>();
+    for (const ing of this.detailRecipe.ingredients || []) {
+      const key = (ing.ingredient_name || '').trim().toLowerCase();
+      const stock = stockMap.get(key);
+      if (!stock) continue;
+      const ingredientId = this.ingredientIdFromStock(stock);
+      if (ingredientId === null || seen.has(ingredientId)) continue;
+
+      seen.add(ingredientId);
+      list.push({
+        ingredientId,
+        recipeIngredient: ing,
+        stock,
+      });
+    }
+
+    // remove selections that are no longer visible
+    for (const id of Array.from(this.selectedIngredientIds)) {
+      if (!seen.has(id)) this.selectedIngredientIds.delete(id);
+    }
+
+    this.intersectingIngredients = list;
   }
 }

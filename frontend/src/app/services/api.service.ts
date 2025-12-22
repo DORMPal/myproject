@@ -47,9 +47,10 @@ export interface SelectIngredient {
 
 export interface IngredientRecord {
   id: number; // id ของ UserStock row
-  ingredient_id: number; // FK ingredient
-  ingredient_name: string; // ชื่อ ingredient
-  quantity: string | null; // Decimal มักถูกส่งมาเป็น string
+  ingredient: SelectIngredient;
+  ingredient_id?: number; // FK ingredient (legacy)
+  ingredient_name?: string; // ชื่อ ingredient (legacy)
+  quantity: string | number | null; // Decimal มักถูกส่งมาเป็น string
   expiration_date: string | null; // "YYYY-MM-DD"
   date_added: string; // "YYYY-MM-DD"
   disable: boolean;
@@ -165,5 +166,13 @@ export class ApiService {
   // DELETE /api/user/<ingredient_id>/
   deleteUserStock(ingredientId: number | string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/user/${ingredientId}/`, this.httpOptions);
+  }
+
+  // DELETE /api/user/ingredient (bulk)
+  deleteUserIngredients(ingredientIds: Array<number | string>): Observable<{ deleted: number }> {
+    return this.http.delete<{ deleted: number }>(`${this.baseUrl}/user/ingredient`, {
+      body: { ingredient_ids: ingredientIds },
+      ...this.httpOptions,
+    });
   }
 }

@@ -9,6 +9,7 @@ from .api_views import (
     IngredientDeleteWithRecipesView,
     UserIngredientListView,
     UserIngredientDetailView,
+    UserIngredientBulkDeleteView,
     IngredientListView,
     MeView,
 )
@@ -31,6 +32,12 @@ urlpatterns = [
     ),
     # GET/POST /api/user (body/query userId)
     path("user", UserIngredientListView.as_view(), name="user-ingredient-list"),
+    # DELETE /api/user/ingredient  (bulk delete by ingredient ids)
+    path(
+        "user/ingredient",
+        UserIngredientBulkDeleteView.as_view(),
+        name="user-ingredient-bulk-delete",
+    ),
     # POST/PATCH/DELETE /api/user/<ingredient_id>/
     path(
         "user/<int:ingredient_id>/",

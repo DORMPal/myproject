@@ -56,7 +56,8 @@ class UserIngredientListView(APIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         stocks = (
-            UserStock.objects.filter(user=user, disable=False)
+            # UserStock.objects.filter(user=user, disable=False)
+            UserStock.objects.filter(user=user)
             .select_related("ingredient")
             .order_by("-date_added")
         )
@@ -93,6 +94,9 @@ class UserIngredientDetailView(APIView):
         for field in ("quantity", "expiration_date", "disable"):
             if field in request.data:
                 setattr(stock, field, request.data.get(field))
+        # ใน post/patch หลังจาก loop
+        if "disable" not in request.data:
+            stock.disable = False
 
         stock.save()
         return Response(UserStockSerializer(stock).data, status=status.HTTP_201_CREATED)
@@ -106,7 +110,8 @@ class UserIngredientDetailView(APIView):
             if field in request.data:
                 setattr(stock, field, request.data.get(field))
                 updated = True
-
+        if "disable" not in request.data:
+            stock.disable = False
         if updated:
             stock.save()
 
@@ -117,6 +122,45 @@ class UserIngredientDetailView(APIView):
         stock = get_object_or_404(UserStock, user=user, ingredient_id=ingredient_id)
         stock.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserIngredientBulkDeleteView(APIView):
+    """
+    DELETE /api/user/ingredient
+    body: { "ingredient_ids": [<id>, <id>, ...] }
+    - ลบ stock หลายรายการของ user ที่ล็อกอินอยู่
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        ingredient_ids = request.data.get("ingredient_ids", [])
+        if not isinstance(ingredient_ids, (list, tuple)) or len(ingredient_ids) == 0:
+            return Response(
+                {"detail": "ingredient_ids must be a non-empty list"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # cast to int and drop invalid values
+        normalized_ids = []
+        for raw in ingredient_ids:
+            try:
+                normalized_ids.append(int(raw))
+            except (TypeError, ValueError):
+                continue
+
+        if not normalized_ids:
+            return Response(
+                {"detail": "ingredient_ids must contain numeric ids"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        deleted_count, _ = UserStock.objects.filter(
+            user=user, ingredient_id__in=normalized_ids
+        ).delete()
+
+        return Response({"deleted": deleted_count})
 
 
 class IngredientListView(APIView):
