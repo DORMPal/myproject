@@ -1,0 +1,2 @@
+# Sample cron entry (run daily at 03:00). Update paths to your environment.
+40 14 * * * /bin/bash /path/to/your/project/backend/run_daily_notifications.sh >> /var/log/expiration_notifications.log 2>&1

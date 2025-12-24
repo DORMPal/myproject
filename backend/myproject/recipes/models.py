@@ -130,3 +130,30 @@ class UserStock(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.ingredient.name}"
+
+
+class Notification(models.Model):
+    """
+    แจ้งเตือนที่ผูกกับ UserStock เมื่อใกล้หมดอายุ
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    user_stock = models.ForeignKey(
+        UserStock,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    read_yet = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notification'
+        indexes = [
+            models.Index(fields=['user', 'read_yet']),
+        ]
+
+    def __str__(self):
+        return f"Notification for {self.user} - {self.user_stock}"

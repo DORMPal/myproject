@@ -70,6 +70,7 @@ export class IngredientsPageComponent implements OnInit {
     this.loading = true;
     this.api.getUserStocks().subscribe({
       next: (rows) => {
+        // console.log('rows=', rows);
         this.stocks = rows || [];
         this.loading = false;
       },
@@ -158,11 +159,18 @@ export class IngredientsPageComponent implements OnInit {
   }
 
   get expired(): number {
-    const now = this.stripTime(new Date());
-    return this.stocks.filter((s) => {
-      if (!s.expiration_date) return false;
-      return this.stripTime(new Date(s.expiration_date)) <= now;
-    }).length;
+    // const now = this.stripTime(new Date());
+    // let b = this.stocks;
+
+    let a = this.stocks.filter(
+      (s) =>
+        // if (!s.expiration_date) return false;
+        // return this.stripTime(new Date(s.expiration_date)) <= now;
+        // console.log(s);
+        s.disable === true
+    );
+    // console.log(a, b, this.stocks);
+    return a.length;
   }
 
   get filteredStocks(): IngredientRecord[] {

@@ -51,7 +51,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'recipes',
     "corsheaders",
+    # "django_cron",
 ]
+
+# CRON_CLASSES = [
+#     "my_app.cron.MyCronJob",
+
+# ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
