@@ -5,3 +5,9 @@ backend/myproject/db.sqlite3
 
 backend/myproject/backup_sqlite.json
 *.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
