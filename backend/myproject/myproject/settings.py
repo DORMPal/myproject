@@ -94,6 +94,12 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_AGE = 1800
 SESSION_SAVE_EVERY_REQUEST = True
 
+STATIC_URL = 'static/'
+
+# --- เพิ่มบรรทัดนี้เข้าไป ---
+# กำหนดให้รวบรวมไฟล์ไปไว้ที่โฟลเดอร์ชื่อ 'staticfiles' ในโปรเจกต์ของคุณ
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 
 ROOT_URLCONF = 'myproject.urls'
 
@@ -131,8 +137,8 @@ DATABASES = {
         "NAME": "myproject",
         "USER": "django_user",
         "PASSWORD": "strongpassword",
-        "HOST": "127.0.0.1",
-        "PORT": "3307",
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "3307"),
         "OPTIONS": {
             "charset": "utf8mb4",
         },

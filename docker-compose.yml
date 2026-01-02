@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: myproject
+      MYSQL_USER: django_user
+      MYSQL_PASSWORD: strongpassword
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - mynetwork
+
+  backend:
+    build:
+      context: ./backend/myproject
+      dockerfile: Dockerfile
+    container_name: django_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=mysql://django_user:strongpassword@db:3306/myproject
+      - DJANGO_SECRET_KEY=your-secret-key-here
+      - FRONTEND_URL=http://localhost:4200/
+      - DB_HOST=db
+    depends_on:
+      - db
+    volumes:
+      - ./backend/myproject:/app
+    networks:
+      - mynetwork
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: angular_frontend
+    restart: always
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - mynetwork
+
+volumes:
+  mysql_data:
+
+networks:
+  mynetwork:
+    driver: bridge

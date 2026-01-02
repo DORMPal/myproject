@@ -4,7 +4,7 @@ from django.conf import settings   # 👈 ใช้ FK ไปยัง User
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    unit_of_measure = models.CharField(max_length=50, null=True, blank=True)
+    unit_of_measure = models.CharField(max_length=255, null=True, blank=True)
 
     # ถ้า unit เป็น null → common=True (ของที่ใช้บ่อยหรือไม่มีสัดส่วน เช่น พริก, เกลือ)
     common = models.BooleanField(default=False)
@@ -92,7 +92,7 @@ class RecipeIngredient(models.Model):
     required_quantity = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
-    required_unit = models.CharField(max_length=50, null=True, blank=True)
+    required_unit = models.CharField(max_length=255, null=True, blank=True)
     group_name = models.CharField(
         max_length=100, null=True, blank=True
     )  # เช่น "เนื้อย่าง", "พริกแกงคั่ว"
