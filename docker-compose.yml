@@ -31,6 +31,7 @@ services:
       - DJANGO_SECRET_KEY=your-secret-key-here
       - FRONTEND_URL=http://localhost:4200/
       - DB_HOST=db
+      - DB_PORT=3306
     depends_on:
       - db
     volumes:
@@ -41,6 +42,28 @@ services:
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
              python manage.py runserver 0.0.0.0:8000"
+
+  scheduler:
+    build:
+      context: ./backend/myproject # ✅ ใช้ Build context เดียวกับ Backend
+      dockerfile: Dockerfile
+    container_name: django_scheduler
+    restart: always
+    # 🔥 สั่งรันไฟล์ run_scheduler.py แทน runserver
+    command: python manage.py run_scheduler
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=mysql://django_user:strongpassword@db:3306/myproject
+      - DJANGO_SECRET_KEY=your-secret-key-here
+      - DB_HOST=db
+      - DB_PORT=3306
+    depends_on:
+      - db
+      - backend # รอให้ backend migrate db ให้เสร็จก่อน
+    volumes:
+      - ./backend/myproject:/app # Mount volume เหมือนกัน
+    networks:
+      - mynetwork
 
   frontend:
     build:

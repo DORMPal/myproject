@@ -1,3 +1,4 @@
+APScheduler==3.11.2
 asgiref==3.11.0
 certifi==2025.11.12
 cffi==2.0.0
@@ -5,6 +6,7 @@ charset-normalizer==3.4.4
 cryptography==46.0.3
 Django==5.2.8
 django-allauth==65.13.1
+django-apscheduler==0.7.0
 django-cors-headers==4.9.0
 djangorestframework==3.16.1
 idna==3.11
@@ -14,4 +16,5 @@ PyJWT==2.10.1
 python-dotenv==1.2.1
 requests==2.32.5
 sqlparse==0.5.3
+tzlocal==5.3.1
 urllib3==2.5.0

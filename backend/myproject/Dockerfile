@@ -13,6 +13,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         default-libmysqlclient-dev \
         build-essential \
+        pkg-config \
     && rm -rf /var/lib/apt/lists/*
 # CMD ["python", "--version"]
 # RUN pip install --upgrade pip 
@@ -30,7 +31,7 @@ COPY . /app/
 RUN mkdir -p /app/staticfiles
 
 # Collect static files
-RUN python manage.py collectstatic --noinput
+# RUN python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000
