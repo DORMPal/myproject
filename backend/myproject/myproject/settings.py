@@ -89,7 +89,7 @@ DATABASES = {
         "PASSWORD": "strongpassword",
         # Config นี้รองรับทั้ง Docker และ Local
         "HOST": os.getenv("DB_HOST", "127.0.0.1"), 
-        "PORT": os.getenv("DB_PORT", "3307"),
+        "PORT": os.getenv("DB_PORT", "3306"),
         "OPTIONS": {
             "charset": "utf8mb4",
         },
@@ -130,6 +130,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # --- CORS & CSRF ---
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",
+    "http://localhost:4500",
 ]
 CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -138,6 +139,13 @@ SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_AGE = 1800
 SESSION_SAVE_EVERY_REQUEST = True
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
 # --- REST Framework ---
 REST_FRAMEWORK = {

@@ -12,7 +12,7 @@ export const routes: Routes = [
 
   {
     path: 'page',
-    // canActivate: [authGuard],
+    canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'ingredient', pathMatch: 'full' },
 
