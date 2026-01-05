@@ -15,6 +15,7 @@ from .api_views import (
     LogoutView,
     NotificationListView,
     NotificationDetailView,
+    TagListView,
 )
 
 router = DefaultRouter()
@@ -25,7 +26,7 @@ router.register(r"recipes", RecipeViewSet, basename="recipe")
 urlpatterns = [
     # ViewSet URLs
     path("", include(router.urls)),
-    path("api/auth/csrf", csrf),
+    path("auth/csrf", csrf),
 
     # DELETE /api/ingredients/<pk>/
     path(
@@ -57,6 +58,8 @@ urlpatterns = [
     path("notifications", NotificationListView.as_view(), name="notification-list"),
     # PATCH /api/notifications/<pk>/
     path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
+    # GET /api/tags
+    path("tags", TagListView.as_view(), name="tag-list"),
     # GET /api/recommend (top 10)
     path("recommend", RecipeRecommendView.as_view(), name="recipe-recommend"),
 ]

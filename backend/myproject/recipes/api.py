@@ -30,7 +30,7 @@ class RecipeViewSet(ReadOnlyModelViewSet):
     serializer_class = RecipeSerializer
     pagination_class = RecipePagination
     filter_backends = [SearchFilter]
-    search_fields = ['title', 'short_detail', 'tags__name']
+    search_fields = ['title']
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('thumbnail_obj')

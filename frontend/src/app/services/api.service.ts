@@ -198,6 +198,10 @@ export class ApiService {
     );
   }
 
+  getTags(): Observable<TagItem[]> {
+    return this.http.get<TagItem[]>(`${this.baseUrl}/tags`, this.httpOptions);
+  }
+
   // GET /api/user
   getUserStocks(): Observable<IngredientRecord[]> {
     return this.http.get<IngredientRecord[]>(`${this.baseUrl}/user`, this.httpOptions);

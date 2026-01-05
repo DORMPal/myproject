@@ -12,6 +12,9 @@ import { CardModule } from 'primeng/card';
 import { DialogModule } from 'primeng/dialog';
 import { StepperModule } from 'primeng/stepper';
 import { CheckboxModule } from 'primeng/checkbox';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import { SelectModule } from 'primeng/select';
 
 import { HeaderComponent } from '../../shared/header/header.component';
 import {
@@ -45,6 +48,9 @@ type IntersectedIngredient = {
     DialogModule,
     StepperModule,
     CheckboxModule,
+    IconFieldModule,
+    InputIconModule,
+    SelectModule,
   ],
   templateUrl: './recipes.page.html',
   styleUrls: ['./recipes.page.scss'],
@@ -55,6 +61,9 @@ export class RecipesPageComponent implements OnInit {
   // UI state
   search = '';
   activeTag: string | null = null;
+  tagSearch = '';
+  filteredTags: TagItem[] = [];
+  allTagsOptions: any[] = [];
 
   // paging (DRF page size = 20)
   page = 1;
@@ -92,6 +101,7 @@ export class RecipesPageComponent implements OnInit {
   ngOnInit(): void {
     this.fetchRecipes(1);
     this.fetchRecommended();
+    this.fetchTags();
   }
 
   fetchRecipes(page: number): void {
@@ -116,16 +126,13 @@ export class RecipesPageComponent implements OnInit {
               if (!map.has(t.id)) map.set(t.id, t);
             }
           }
-          this.availableTags = Array.from(map.values()).sort((a, b) =>
-            (a.name || '').localeCompare(b.name || '')
-          );
 
           this.loading = false;
         },
         error: (err) => {
           this.loading = false;
           this.results = [];
-          this.availableTags = [];
+          // this.availableTags = [];
           this.totalCount = 0;
           this.errorMsg = 'โหลดข้อมูลไม่สำเร็จ';
           console.error(err);
@@ -143,6 +150,33 @@ export class RecipesPageComponent implements OnInit {
         this.recommended = [];
       },
     });
+  }
+
+  private fetchTags(): void {
+    this.api.getTags().subscribe({
+      next: (tags) => {
+        this.availableTags = tags || [];
+        this.filteredTags = this.availableTags;
+        this.allTagsOptions = [...this.availableTags];
+      },
+      error: (err) => {
+        console.error(err);
+        this.availableTags = [];
+        this.filteredTags = [];
+        this.allTagsOptions = [{ name: 'All Tags', value: null }];
+      },
+    });
+  }
+
+  filterTags(): void {
+    if (!this.tagSearch.trim()) {
+      this.filteredTags = this.availableTags;
+    } else {
+      const searchTerm = this.tagSearch.toLowerCase();
+      this.filteredTags = this.availableTags.filter((tag) =>
+        tag.name.toLowerCase().includes(searchTerm)
+      );
+    }
   }
 
   onSearch(): void {

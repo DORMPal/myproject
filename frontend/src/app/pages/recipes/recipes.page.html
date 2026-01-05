@@ -399,15 +399,17 @@
     <div class="flex flex-column gap-3 mb-3">
       <div class="flex gap-2 align-items-center">
         <span class="p-input-icon-left w-full">
-          <i class="pi pi-search"></i>
-          <input
-            pInputText
-            type="text"
-            class="w-full"
-            [(ngModel)]="search"
-            placeholder="ค้นหาเมนู..."
-            (keydown.enter)="onSearch()"
-          />
+          <p-iconfield>
+            <p-inputicon class="pi pi-search" />
+            <input
+              pInputText
+              type="text"
+              class="w-full"
+              [(ngModel)]="search"
+              placeholder="ค้นหาเมนู..."
+              (keydown.enter)="onSearch()"
+            />
+          </p-iconfield>
         </span>
 
         <p-button label="ค้นหา" icon="pi pi-search" (click)="onSearch()" />
@@ -415,20 +417,33 @@
       </div>
 
       <div class="flex flex-wrap gap-2 align-items-center">
-        <p-button
-          label="All"
-          [outlined]="activeTag !== null"
-          (click)="setTag(null)"
-          size="small"
-        ></p-button>
-
-        <p-button
-          *ngFor="let t of availableTags; trackBy: trackByTagId"
-          [label]="t.name"
-          [outlined]="activeTag !== t.name"
-          (click)="setTag(t.name)"
-          size="small"
-        ></p-button>
+        <p-select
+          [options]="availableTags"
+          optionLabel="name"
+          optionValue="name"
+          [(ngModel)]="activeTag"
+          (onChange)="setTag($event.value)"
+          placeholder="Select a tag"
+          [style]="{ width: '200px' }"
+          [filter]="true"
+          filterBy="name"
+          [showClear]="true"
+          placeholder="All"
+          class="w-full"
+          virtualScroll="true"
+          virtualScrollItemSize="50"
+          scrollHeight="270px"
+          appendTo="body"
+        >
+          <ng-template pTemplate="selectedItem">
+            <span class="pi pi-tag mr-2"></span>
+            <span>{{ activeTag || 'All Tags' }}</span>
+          </ng-template>
+          <ng-template pTemplate="item" let-item>
+            <span class="pi pi-tag mr-2"></span>
+            <span>{{ item.name }}</span>
+          </ng-template>
+        </p-select>
       </div>
     </div>
 
@@ -439,7 +454,7 @@
 
     <!-- LIST -->
     <div class="grid">
-      <div class="" *ngFor="let r of results; trackBy: trackByRecipeId">
+      <div class="recipe-col" *ngFor="let r of results; trackBy: trackByRecipeId">
         <p-card class="h-full">
           <div class="mb-3 recipe-item">
             <img

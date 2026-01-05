@@ -8,8 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Ingredient, Recipe, UserStock, Notification
-from .serializers import IngredientSerializer, UserStockSerializer, NotificationSerializer
+from .models import Ingredient, Recipe, UserStock, Notification, Tag
+from .serializers import IngredientSerializer, UserStockSerializer, NotificationSerializer, TagSerializer
 
 User = get_user_model()
 
@@ -253,3 +253,15 @@ class NotificationDetailView(APIView):
         notification.save()
         
         return Response(NotificationSerializer(notification).data)
+
+
+class TagListView(APIView):
+    """
+    GET /api/tags
+    Returns all tags available in the system.
+    """
+
+    def get(self, request, *args, **kwargs):
+        tags = Tag.objects.all().order_by('name')
+        data = TagSerializer(tags, many=True).data
+        return Response(data)

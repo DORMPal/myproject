@@ -89,7 +89,7 @@ h2 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -213,4 +213,9 @@ h3 {
 
 .recipe-item ::ng-deep .p-card-content {
   flex: 1;
+}
+
+.recipe-col {
+  max-width: 400px; /* หรือขนาดที่คุณชอบ */
+  width: 100%; /* เพื่อให้ย่อเล็กได้เวลาจอมือถือ */
 }
