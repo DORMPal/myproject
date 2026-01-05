@@ -62,6 +62,22 @@ export interface CurrentUser {
   name: string;
 }
 
+export interface NotificationItem {
+  id: number;
+  user_stock: number;
+  ingredient_name: string;
+  ingredient_id: number;
+  expiration_date: string;
+  quantity: number | string | null;
+  read_yet: boolean;
+  created_at: string;
+}
+
+export interface NotificationResponse {
+  notifications: NotificationItem[];
+  unread_count: number;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -164,6 +180,22 @@ export class ApiService {
 
   getCurrentUser(): Observable<CurrentUser> {
     return this.http.get<CurrentUser>(`${this.baseUrl}/auth/me`, this.httpOptions);
+  }
+
+  logout(): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${this.baseUrl}/auth/logout`, {}, this.httpOptions);
+  }
+
+  getNotifications(): Observable<NotificationResponse> {
+    return this.http.get<NotificationResponse>(`${this.baseUrl}/notifications`, this.httpOptions);
+  }
+
+  markNotificationAsRead(notificationId: number | string): Observable<NotificationItem> {
+    return this.http.patch<NotificationItem>(
+      `${this.baseUrl}/notifications/${notificationId}/`,
+      {},
+      this.httpOptions
+    );
   }
 
   // GET /api/user

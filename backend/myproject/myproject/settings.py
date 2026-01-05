@@ -167,6 +167,12 @@ SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+            
+            # 👇👇 เพิ่มบรรทัดนี้ครับ 👇👇
+            'prompt': 'select_account' 
+        },
         'OAUTH_PKCE_ENABLED': True,
         'APP': {
             'client_id': os.getenv('GOOGLE_CLIENT_ID', ''),

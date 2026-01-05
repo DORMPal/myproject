@@ -33,15 +33,50 @@
   </nav>
 
   <div class="user flex align-items-center gap-3">
-    <span class="username text-800">{{ name.name }}n</span>
+    <!-- <span class="username text-800">{{ name.name }}</span> -->
+    <span class="username text-800">dorm</span>
+    <p-overlaybadge
+      value="{{ nums_notifications }}"
+      severity="danger"
+      [style]="{ cursor: 'pointer' }"
+      (click)="toggle_notifications = !toggle_notifications"
+    >
+      <i class="pi pi-bell" style="font-size: 1.5rem"></i>
+      <div
+        class="absolute border-1 overflow-y-auto z-1 right-0"
+        style="width: 300px; max-height: 300px; background-color: #f2ebe1"
+        *ngIf="toggle_notifications"
+      >
+        <div *ngIf="notifications.length === 0" class="p-3 text-center">
+          <p class="m-0">No notifications</p>
+        </div>
+        <div
+          *ngFor="let notification of notifications"
+          class="p-3 border-bottom-1 cursor-pointer hover:bg-gray-100"
+          [class.bg-gray-50]="!notification.read_yet"
+          (click)="markAsRead(notification.id)"
+        >
+          <div class="flex flex-column gap-2">
+            <div class="flex justify-content-between align-items-center">
+              <span class="font-semibold text-sm">{{ notification.ingredient_name }}</span>
+              <span
+                *ngIf="!notification.read_yet"
+                class="bg-blue-500 text-white text-xs px-2 py-1 border-radius-2"
+                >New</span
+              >
+            </div>
+            <p class="m-0 text-sm text-600">
+              Expiration date: {{ notification.expiration_date | date : 'mediumDate' }}
+            </p>
+            <p class="m-0 text-xs text-500">
+              {{ notification.created_at | date : 'short' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </p-overlaybadge>
     <button class="logout" type="button" (click)="logout()">
       <span class="logout-icon">
-        <!-- <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M13 5a1 1 0 0 0-1-1H6a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h6a1 1 0 1 0 0-2H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6a1 1 0 0 0 1-1Zm2.3 3.3a1 1 0 0 0-1.4 1.4L15.58 11H10a1 1 0 1 0 0 2h5.58l-1.67 1.3a1 1 0 1 0 1.24 1.6l3.75-2.92a1 1 0 0 0 0-1.56L15.3 8.3Z"
-            fill="currentColor"
-          />
-        </svg> -->
         <i class="pi pi-sign-out"></i>
       </span>
       <span class="logout-text">Logout</span>

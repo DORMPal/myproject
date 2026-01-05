@@ -8,8 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Ingredient, Recipe, UserStock
-from .serializers import IngredientSerializer, UserStockSerializer
+from .models import Ingredient, Recipe, UserStock, Notification
+from .serializers import IngredientSerializer, UserStockSerializer, NotificationSerializer
 
 User = get_user_model()
 
@@ -203,3 +203,53 @@ class MeView(APIView):
                 "name": user.get_full_name() or user.username,
             }
         )
+
+
+class LogoutView(APIView):
+    """
+    POST /api/auth/logout
+    Logs out the current user by clearing the session.
+    """
+
+    def post(self, request, *args, **kwargs):
+        from django.contrib.auth import logout
+        logout(request)
+        return Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
+
+
+class NotificationListView(APIView):
+    """
+    GET /api/notifications
+    Returns all notifications for the current user and count of unread notifications.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        notifications = Notification.objects.filter(user=user).order_by('-created_at')
+        unread_count = notifications.filter(read_yet=False).count()
+        
+        data = NotificationSerializer(notifications, many=True).data
+        return Response({
+            'notifications': data,
+            'unread_count': unread_count
+        })
+
+
+class NotificationDetailView(APIView):
+    """
+    PATCH /api/notifications/<pk>/
+    Updates the read status of a notification to True.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk, *args, **kwargs):
+        user = request.user
+        notification = get_object_or_404(Notification, pk=pk, user=user)
+        
+        notification.read_yet = True
+        notification.save()
+        
+        return Response(NotificationSerializer(notification).data)

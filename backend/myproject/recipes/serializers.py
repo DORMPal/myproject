@@ -1,6 +1,6 @@
 import base64
 from rest_framework import serializers
-from recipes.models import Recipe, RecipeIngredient, Tag, Ingredient, UserStock
+from recipes.models import Recipe, RecipeIngredient, Tag, Ingredient, UserStock, Notification
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
@@ -72,3 +72,23 @@ class UserStockSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserStock
         fields = ['id', 'ingredient', 'quantity', 'expiration_date', 'date_added', 'disable']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    ingredient_name = serializers.CharField(source='user_stock.ingredient.name')
+    ingredient_id = serializers.IntegerField(source='user_stock.ingredient.id')
+    expiration_date = serializers.DateField(source='user_stock.expiration_date')
+    quantity = serializers.DecimalField(source='user_stock.quantity', max_digits=10, decimal_places=2, allow_null=True)
+    
+    class Meta:
+        model = Notification
+        fields = [
+            'id',
+            'user_stock',
+            'ingredient_name',
+            'ingredient_id',
+            'expiration_date',
+            'quantity',
+            'read_yet',
+            'created_at'
+        ]

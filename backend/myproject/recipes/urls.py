@@ -12,6 +12,9 @@ from .api_views import (
     UserIngredientBulkDeleteView,
     IngredientListView,
     MeView,
+    LogoutView,
+    NotificationListView,
+    NotificationDetailView,
 )
 
 router = DefaultRouter()
@@ -48,6 +51,12 @@ urlpatterns = [
     path("ingredient", IngredientListView.as_view(), name="ingredient-list"),
     # GET /api/auth/me (session-based)
     path("auth/me", MeView.as_view(), name="auth-me"),
+    # POST /api/auth/logout
+    path("auth/logout", LogoutView.as_view(), name="auth-logout"),
+    # GET /api/notifications
+    path("notifications", NotificationListView.as_view(), name="notification-list"),
+    # PATCH /api/notifications/<pk>/
+    path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
     # GET /api/recommend (top 10)
     path("recommend", RecipeRecommendView.as_view(), name="recipe-recommend"),
 ]
