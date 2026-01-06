@@ -219,3 +219,15 @@ h3 {
   max-width: 400px; /* หรือขนาดที่คุณชอบ */
   width: 100%; /* เพื่อให้ย่อเล็กได้เวลาจอมือถือ */
 }
+
+:host ::ng-deep .custom-skeleton {
+  /* 1. สีพื้นหลังหลัก (สีไข่ไก่ของคุณ) */
+  background-color: #eee9e2 !important;
+
+  /* 2. สีของแสงวิบวับ (Animation) */
+  /* แนะนำให้ใช้สีขาวจางๆ (rgba) เพื่อให้มันดูสว่างขึ้นตอนวิ่งผ่าน */
+  --p-skeleton-animation-background: rgba(255, 255, 255, 0.6);
+
+  /* (Optional) ถ้าอยากให้สีพื้นฐานเปลี่ยนด้วยตัวแปร */
+  --p-skeleton-background: #eee9e2;
+}

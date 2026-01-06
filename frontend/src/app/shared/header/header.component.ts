@@ -4,6 +4,8 @@ import { Router, RouterLink } from '@angular/router';
 import { ApiService, NotificationItem, NotificationResponse } from '../../services/api.service';
 import { BadgeModule } from 'primeng/badge';
 import { OverlayBadgeModule } from 'primeng/overlaybadge';
+import { DrawerModule } from 'primeng/drawer';
+import { ButtonModule } from 'primeng/button';
 
 type HeaderTab = 'recipes' | 'ingredients' | '';
 interface Name {
@@ -15,7 +17,7 @@ interface Name {
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, BadgeModule, OverlayBadgeModule],
+  imports: [CommonModule, RouterLink, BadgeModule, OverlayBadgeModule, DrawerModule, ButtonModule],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss',
 })
@@ -24,6 +26,7 @@ export class HeaderComponent {
   nums_notifications: number = 0;
   toggle_notifications: boolean = false;
   notifications: NotificationItem[] = [];
+  sidebarVisible: boolean = false;
 
   constructor(private readonly router: Router, private readonly api: ApiService) {}
 
@@ -96,5 +99,9 @@ export class HeaderComponent {
         this.router.navigateByUrl('/login');
       },
     });
+  }
+
+  closeSidebar() {
+    this.sidebarVisible = false;
   }
 }

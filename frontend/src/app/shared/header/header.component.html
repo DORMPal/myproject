@@ -4,82 +4,155 @@
     <span class="brand-name text-900">PantryChef</span>
   </div>
 
-  <nav class="nav flex align-items-center gap-4">
-    <a class="nav-link" [class.active]="active === 'recipes'" routerLink="/page/recipes">
-      <span class="icon">
-        <!-- <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M15.5 3a2.5 2.5 0 0 1 2.45 2.02l.53 2.79a1 1 0 0 1-1.64.9L15 7.79l-4.4 4.4a2.75 2.75 0 0 1-.73 4.76l-4.02 1.61a1 1 0 0 1-1.05-1.64l3.3-2.99a1.5 1.5 0 0 0-.31-2.44l-.54-.27a1 1 0 0 1-.14-1.7l7.5-5.95A2.5 2.5 0 0 1 15.5 3Z"
-            fill="currentColor"
-          />
-        </svg> -->
-        <img src="/assets/header/recipeLogo.svg" alt="PantryChef logo" />
-      </span>
-      <span class="label">สูตรอาหาร</span>
-    </a>
+  <div class="desktop-menu hidden md:flex align-items-center gap-4 flex-1 justify-content-end">
+    <nav class="nav flex align-items-center gap-4">
+      <a class="nav-link" [class.active]="active === 'recipes'" routerLink="/page/recipes">
+        <span class="icon">
+          <img src="/assets/header/recipeLogo.svg" alt="Recipes" />
+        </span>
+        <span class="label">สูตรอาหาร</span>
+      </a>
 
-    <a class="nav-link" [class.active]="active === 'ingredients'" routerLink="/page/ingredient">
-      <span class="icon">
-        <!-- <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M14.5 3c-1.33 0-2.5 1.17-2.5 2.5 0 .76.33 1.44.86 1.9l-6.6 6.6a2.5 2.5 0 0 0-.66 1.18l-.93 3.38a1 1 0 0 0 1.24 1.24l3.38-.93a2.5 2.5 0 0 0 1.18-.66l6.6-6.6A2.5 2.5 0 0 0 17.5 10c0-.65-.24-1.24-.63-1.7l1.41-1.41a1 1 0 1 0-1.41-1.41L15.46 6l-.76-.76c-.2-.2-.3-.47-.3-.74 0-.55.55-1 1.1-1h.26a1 1 0 1 0 0-2H14.5Z"
-            fill="currentColor"
-          />
-        </svg> -->
-        <img src="/assets/header/ingredientLogo.svg" alt="PantryChef logo" />
-      </span>
-      <span class="label">วัตถุดิบของฉัน</span>
-    </a>
-  </nav>
+      <a class="nav-link" [class.active]="active === 'ingredients'" routerLink="/page/ingredient">
+        <span class="icon">
+          <img src="/assets/header/ingredientLogo.svg" alt="Ingredients" />
+        </span>
+        <span class="label">วัตถุดิบของฉัน</span>
+      </a>
+    </nav>
 
-  <div class="user flex align-items-center gap-3">
-    <span class="username text-800">{{ name?.name }}</span>
-    <!-- <span class="username text-800">dorm</span> -->
-    <p-overlaybadge
-      value="{{ nums_notifications }}"
-      severity="danger"
-      [style]="{ cursor: 'pointer' }"
-      (click)="toggle_notifications = !toggle_notifications"
-    >
-      <i class="pi pi-bell" style="font-size: 1.5rem"></i>
-      <div
-        class="absolute border-1 overflow-y-auto z-1 right-0"
-        style="width: 300px; max-height: 300px; background-color: #f2ebe1"
-        *ngIf="toggle_notifications"
+    <div class="user flex align-items-center gap-3 border-left-1 border-gray-300 pl-3">
+      <span class="username text-800">{{ name?.name }}</span>
+
+      <p-overlaybadge
+        value="{{ nums_notifications }}"
+        severity="danger"
+        [style]="{ cursor: 'pointer' }"
+        (click)="toggle_notifications = !toggle_notifications"
       >
-        <div *ngIf="notifications.length === 0" class="p-3 text-center">
-          <p class="m-0">No notifications</p>
-        </div>
+        <i class="pi pi-bell" style="font-size: 1.5rem"></i>
+
         <div
-          *ngFor="let notification of notifications"
-          class="p-3 border-bottom-1 cursor-pointer hover:bg-gray-100"
-          [class.bg-gray-50]="!notification.read_yet"
-          (click)="markAsRead(notification.id)"
+          class="absolute border-1 overflow-y-auto z-5 right-0 shadow-2 border-round-md"
+          style="
+            width: 300px;
+            max-height: 300px;
+            background-color: #fff;
+            top: 100%;
+            margin-top: 10px;
+          "
+          *ngIf="toggle_notifications"
         >
-          <div class="flex flex-column gap-2">
-            <div class="flex justify-content-between align-items-center">
+          <div *ngIf="notifications.length === 0" class="p-3 text-center">
+            <p class="m-0">No notifications</p>
+          </div>
+          <div
+            *ngFor="let notification of notifications"
+            class="p-3 border-bottom-1 cursor-pointer hover:bg-gray-100 text-left"
+            [class.bg-gray-50]="!notification.read_yet"
+            (click)="markAsRead(notification.id)"
+          >
+            <div class="flex flex-column gap-2">
               <span class="font-semibold text-sm">{{ notification.ingredient_name }}</span>
-              <span
-                *ngIf="!notification.read_yet"
-                class="bg-blue-500 text-white text-xs px-2 py-1 border-radius-2"
-                >New</span
-              >
+              <p class="m-0 text-xs text-500">{{ notification.created_at | date : 'short' }}</p>
             </div>
-            <p class="m-0 text-sm text-600">
-              Expiration date: {{ notification.expiration_date | date : 'mediumDate' }}
-            </p>
-            <p class="m-0 text-xs text-500">
-              {{ notification.created_at | date : 'short' }}
-            </p>
           </div>
         </div>
-      </div>
-    </p-overlaybadge>
-    <button class="logout" type="button" (click)="logout()">
-      <span class="logout-icon">
-        <i class="pi pi-sign-out"></i>
-      </span>
-      <span class="logout-text">Logout</span>
-    </button>
+      </p-overlaybadge>
+
+      <button class="logout" type="button" (click)="logout()">
+        <span class="logout-icon"><i class="pi pi-sign-out"></i></span>
+        <span class="logout-text">Logout</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-menu md:hidden">
+    <p-button icon="pi pi-bars" [text]="true" severity="secondary" (click)="sidebarVisible = true">
+    </p-button>
   </div>
 </header>
+
+<p-drawer [(visible)]="sidebarVisible" position="right" [style]="{ width: '300px' }">
+  <ng-template pTemplate="header">
+    <div class="flex align-items-center gap-2">
+      <img src="/assets/logo/logoProject.svg" alt="logo" style="width: 30px" />
+      <span class="font-bold text-xl">Menu</span>
+    </div>
+  </ng-template>
+
+  <div class="flex flex-column h-full">
+    <div class="flex align-items-center gap-3 mb-4 p-3 bg-gray-50 border-round text-black-alpha-90">
+      <i class="pi pi-user border-circle bg-gray-200 p-2"></i>
+      <div class="flex flex-column">
+        <span class="font-bold">{{ name?.name || 'Guest' }}</span>
+      </div>
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <a
+        routerLink="/page/recipes"
+        class="flex align-items-center gap-3 p-3 border-round text-black-alpha-90 no-underline hover:bg-gray-100 transition-duration-150"
+        [class.bg-blue-50]="active === 'recipes'"
+        [class.text-black-alpha-90]="active === 'recipes'"
+        [class.text-white]="active !== 'recipes'"
+        (click)="closeSidebar()"
+      >
+        <i class="pi pi-book text-xl"></i> <span class="font-medium">สูตรอาหาร</span>
+      </a>
+
+      <a
+        routerLink="/page/ingredient"
+        class="flex align-items-center gap-3 p-3 border-round text-black-alpha-90 no-underline hover:bg-gray-100 transition-duration-150"
+        [class.bg-blue-50]="active === 'ingredients'"
+        [class.text-black-alpha-90]="active === 'ingredients'"
+        [class.text-white]="active !== 'ingredients'"
+        (click)="closeSidebar()"
+      >
+        <i class="pi pi-box text-xl"></i>
+        <span class="font-medium">วัตถุดิบของฉัน</span>
+      </a>
+    </div>
+
+    <hr class="w-full border-gray-200 my-3" />
+
+    <div class="flex flex-column gap-2 flex-1 overflow-y-auto" style="min-height: 150px">
+      <div class="flex justify-content-between align-items-center mb-2 px-1">
+        <span class="font-semibold text-gray-500 text-sm">NOTIFICATIONS</span>
+        <p-badge
+          [value]="nums_notifications"
+          severity="danger"
+          *ngIf="nums_notifications > 0"
+        ></p-badge>
+      </div>
+
+      <div *ngIf="notifications.length === 0" class="text-center text-500 text-sm py-4">
+        No new notifications
+      </div>
+
+      <div
+        *ngFor="let notification of notifications"
+        class="p-3 border-round cursor-pointer hover:bg-gray-100 border-1 border-transparent mb-1"
+        [class.bg-blue-50]="!notification.read_yet"
+        (click)="markAsRead(notification.id)"
+      >
+        <div class="flex flex-column gap-1">
+          <span class="font-medium text-sm">{{ notification.ingredient_name }}</span>
+          <span class="text-xs text-500"
+            >Exp: {{ notification.expiration_date | date : 'dd/MM' }}</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-auto pt-3 border-top-1 border-gray-200">
+      <button
+        pButton
+        label="Logout"
+        icon="pi pi-sign-out"
+        class="p-button-danger p-button-text w-full"
+        (click)="logout()"
+      ></button>
+    </div>
+  </div>
+</p-drawer>

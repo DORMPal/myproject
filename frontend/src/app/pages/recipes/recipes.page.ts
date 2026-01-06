@@ -15,6 +15,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { SelectModule } from 'primeng/select';
+import { SkeletonModule } from 'primeng/skeleton';
 
 import { HeaderComponent } from '../../shared/header/header.component';
 import {
@@ -51,6 +52,7 @@ type IntersectedIngredient = {
     IconFieldModule,
     InputIconModule,
     SelectModule,
+    SkeletonModule,
   ],
   templateUrl: './recipes.page.html',
   styleUrls: ['./recipes.page.scss'],
@@ -70,6 +72,7 @@ export class RecipesPageComponent implements OnInit {
   pageSize = 20;
   totalCount = 0;
   loading = false;
+  loadingRecommended = false;
   errorMsg: string | null = null;
 
   // data
@@ -141,13 +144,16 @@ export class RecipesPageComponent implements OnInit {
   }
 
   private fetchRecommended(): void {
+    this.loadingRecommended = true;
     this.api.getRecommendedRecipes().subscribe({
       next: (res) => {
         this.recommended = res.results || [];
+        this.loadingRecommended = false;
       },
       error: (err) => {
         console.error(err);
         this.recommended = [];
+        this.loadingRecommended = false;
       },
     });
   }
@@ -242,6 +248,10 @@ export class RecipesPageComponent implements OnInit {
 
   trackByTagId(_index: number, item: TagItem): number {
     return item.id;
+  }
+
+  trackBySkeletonId(_index: number, item: number): number {
+    return item;
   }
 
   toggleIngredientSelection(ingredientId: number, checked: boolean): void {
