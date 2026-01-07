@@ -151,6 +151,7 @@ class Notification(models.Model):
 
     class Meta:
         db_table = 'notification'
+        unique_together = ('user', 'user_stock')
         indexes = [
             models.Index(fields=['user', 'read_yet']),
         ]

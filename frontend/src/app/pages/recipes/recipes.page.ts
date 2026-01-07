@@ -17,6 +17,8 @@ import { InputIconModule } from 'primeng/inputicon';
 import { SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
 
+import { forkJoin } from 'rxjs';
+
 import { HeaderComponent } from '../../shared/header/header.component';
 import {
   ApiService,
@@ -31,6 +33,12 @@ type IntersectedIngredient = {
   ingredientId: number;
   recipeIngredient: RecipeIngredientItem;
   stock: IngredientRecord;
+};
+
+type IntersectedIngredientGroup = {
+  ingredientName: string;
+  recipeIngredient: RecipeIngredientItem;
+  stocks: IngredientRecord[]; // มีได้หลายอัน (เช่น นมหมดอายุวันที่ 1, นมหมดอายุวันที่ 10)
 };
 
 @Component({
@@ -91,11 +99,13 @@ export class RecipesPageComponent implements OnInit {
   userStocksLoaded = false;
   userStocksLoading = false;
   userStockError: string | null = null;
+  intersectingGroups: IntersectedIngredientGroup[] = [];
   intersectingIngredients: IntersectedIngredient[] = [];
   selectedIngredientIds = new Set<number>();
   bulkDeleteLoading = false;
   bulkDeleteError: string | null = null;
   bulkDeleteSuccess: string | null = null;
+  selectedStockIds = new Set<number>();
 
   responsiveOptions = [
     { breakpoint: '1024px', numVisible: 2, numScroll: 1 },
@@ -220,6 +230,8 @@ export class RecipesPageComponent implements OnInit {
     this.selectedIngredientIds.clear();
     this.bulkDeleteError = null;
     this.bulkDeleteSuccess = null;
+    this.intersectingGroups = []; // reset
+    this.selectedStockIds.clear();
 
     this.loadUserStocksIfNeeded();
     this.api.getRecipeById(recipe.id).subscribe({
@@ -264,8 +276,16 @@ export class RecipesPageComponent implements OnInit {
     }
   }
 
+  toggleStockSelection(stockId: number, checked: boolean): void {
+    if (checked) {
+      this.selectedStockIds.add(stockId);
+    } else {
+      this.selectedStockIds.delete(stockId);
+    }
+  }
+
   removeSelectedIngredients(): void {
-    if (this.selectedIngredientIds.size === 0) {
+    if (this.selectedStockIds.size === 0) {
       this.bulkDeleteError = 'กรุณาเลือกวัตถุดิบที่ต้องการลบ';
       return;
     }
@@ -274,23 +294,25 @@ export class RecipesPageComponent implements OnInit {
     this.bulkDeleteSuccess = null;
     this.bulkDeleteLoading = true;
 
-    const ids = Array.from(this.selectedIngredientIds);
-    this.api.deleteUserIngredients(ids).subscribe({
-      next: (res) => {
+    const ids = Array.from(this.selectedStockIds);
+    const deleteTasks = ids.map((id) => this.api.deleteUserStock(id));
+
+    forkJoin(deleteTasks).subscribe({
+      next: () => {
         this.bulkDeleteLoading = false;
         this.bulkDeleteSuccess = 'ลบวัตถุดิบออกจากสต็อกแล้ว';
-        // remove local stocks that were deleted
+
+        // ลบออกจาก userStocks ในเครื่อง (Local Update)
         const idSet = new Set(ids);
-        this.userStocks = this.userStocks.filter(
-          (s) => !idSet.has(this.ingredientIdFromStock(s) ?? -1)
-        );
-        this.selectedIngredientIds.clear();
-        this.updateIntersectingIngredients();
+        this.userStocks = this.userStocks.filter((s) => !idSet.has(s.id)); // s.id คือ UserStock PK
+
+        this.selectedStockIds.clear();
+        this.updateIntersectingIngredients(); // คำนวณใหม่
       },
       error: (err) => {
         console.error(err);
         this.bulkDeleteLoading = false;
-        this.bulkDeleteError = 'ลบวัตถุดิบไม่สำเร็จ (ตรวจสอบการเข้าสู่ระบบ)';
+        this.bulkDeleteError = 'เกิดข้อผิดพลาดในการลบ';
       },
     });
   }
@@ -372,40 +394,52 @@ export class RecipesPageComponent implements OnInit {
       return;
     }
 
-    const stockMap = new Map<string, IngredientRecord>();
+    const stockMap = new Map<string, IngredientRecord[]>();
+
+    this.userOwnedSet.clear();
     for (const stock of this.userStocks || []) {
       const key = (stock.ingredient?.name || (stock as any).ingredient_name || '')
         .trim()
         .toLowerCase();
+
       if (key) {
-        stockMap.set(key, stock);
+        if (!stockMap.has(key)) {
+          stockMap.set(key, []);
+        }
+        stockMap.get(key)?.push(stock);
+
+        // เพิ่มลง Set ไว้ทำตัวหนังสือสีแดง (isMissing)
         this.userOwnedSet.add(key);
       }
     }
 
-    const list: IntersectedIngredient[] = [];
-    const seen = new Set<number>();
+    const groups: IntersectedIngredientGroup[] = [];
+
     for (const ing of this.detailRecipe.ingredients || []) {
       const key = (ing.ingredient_name || '').trim().toLowerCase();
-      const stock = stockMap.get(key);
-      if (!stock) continue;
-      const ingredientId = this.ingredientIdFromStock(stock);
-      if (ingredientId === null || seen.has(ingredientId)) continue;
+      const matchingStocks = stockMap.get(key);
 
-      seen.add(ingredientId);
-      list.push({
-        ingredientId,
-        recipeIngredient: ing,
-        stock,
-      });
+      // ถ้ามีของในตู้เย็นที่ชื่อตรงกัน
+      if (matchingStocks && matchingStocks.length > 0) {
+        groups.push({
+          ingredientName: ing.ingredient_name,
+          recipeIngredient: ing,
+          stocks: matchingStocks, // ส่งไปทั้ง Array (เช่น มีนม 2 ขวด)
+        });
+      }
     }
 
-    // remove selections that are no longer visible
-    for (const id of Array.from(this.selectedIngredientIds)) {
-      if (!seen.has(id)) this.selectedIngredientIds.delete(id);
+    // เคลียร์ selection ที่ไม่มีอยู่แล้วออก (Clean up)
+    const allVisibleStockIds = new Set<number>();
+    groups.forEach((g) => g.stocks.forEach((s) => allVisibleStockIds.add(s.id)));
+
+    for (const id of Array.from(this.selectedStockIds)) {
+      if (!allVisibleStockIds.has(id)) {
+        this.selectedStockIds.delete(id);
+      }
     }
 
-    this.intersectingIngredients = list;
+    this.intersectingGroups = groups;
   }
 
   isMissing(ingredientName: string | undefined): boolean {

@@ -220,8 +220,22 @@ export class ApiService {
   }
 
   // DELETE /api/user/<ingredient_id>/
-  deleteUserStock(ingredientId: number | string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/user/${ingredientId}/`, this.httpOptions);
+  // ✅ [NEW] PATCH /api/stock/<pk>/
+  updateUserStock(
+    stockId: number | string,
+    payload: Record<string, unknown>
+  ): Observable<IngredientRecord> {
+    return this.http.patch<IngredientRecord>(
+      `${this.baseUrl}/stock/${stockId}/`,
+      payload,
+      this.httpOptions
+    );
+  }
+
+  // ✅ [UPDATE] DELETE /api/stock/<pk>/
+  // เปลี่ยนจากรับ ingredientId เป็น stockId (pk ของ UserStock)
+  deleteUserStock(stockId: number | string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/stock/${stockId}/`, this.httpOptions);
   }
 
   // DELETE /api/user/ingredient (bulk)

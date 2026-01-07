@@ -146,8 +146,9 @@ class Command(BaseCommand):
         scheduler.add_job(
             daily_stock_check_job,
             trigger="cron",
-            hour="00",     # เที่ยงคืน
-            minute="01",   # 1 นาที
+            hour="00",     
+            minute="01",   
+            # minute="*/10",   
             id="daily_stock_manager",
             max_instances=1,
             replace_existing=True,

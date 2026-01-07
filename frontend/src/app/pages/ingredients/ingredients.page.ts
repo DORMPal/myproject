@@ -41,6 +41,7 @@ export class IngredientsPageComponent implements OnInit {
   private readonly toast = inject(MessageService); // ✅
 
   ingredients$ = this.store.ingredients$;
+  editingStockId: number | null = null;
 
   visible = false;
   selectedIngredient?: SelectIngredient;
@@ -61,6 +62,7 @@ export class IngredientsPageComponent implements OnInit {
   showDialog(): void {
     this.errorMsg = null;
     this.selectedIngredient = undefined;
+    this.editingStockId = null;
     this.date = undefined;
     this.quantity = undefined;
     this.visible = true;
@@ -80,6 +82,30 @@ export class IngredientsPageComponent implements OnInit {
         this.loading = false;
       },
     });
+  }
+
+  onEdit(row: IngredientRecord): void {
+    this.errorMsg = null;
+    this.editingStockId = row.id; // เก็บ ID ของ UserStock
+
+    // Map ข้อมูลลง Form
+    this.selectedIngredient = row.ingredient;
+
+    // แปลง string date กลับเป็น Date object
+    if (row.expiration_date) {
+      this.date = new Date(row.expiration_date);
+    } else {
+      this.date = undefined;
+    }
+
+    // แปลง quantity
+    if (row.quantity) {
+      this.quantity = Number(row.quantity);
+    } else {
+      this.quantity = undefined;
+    }
+
+    this.visible = true;
   }
 
   /** ✅ ใช้ได้ทั้ง add หรือ update (ถ้าต้องการ update ให้เรียก patch แทน post) */
@@ -121,22 +147,54 @@ export class IngredientsPageComponent implements OnInit {
     }
 
     // ✅ rule 3: ส่ง disable=true เฉพาะกรณีที่ต้อง disable, ถ้าไม่ส่ง = backend ควรถือว่า false
-    if (shouldDisable) payload['disable'] = true;
+    if (shouldDisable) {
+      payload['disable'] = true;
+    } else {
+      // กรณี Edit: ถ้าแก้จากหมดอายุ -> ไม่หมดอายุ ต้องส่ง false ไปแก้กลับด้วย
+      // กรณี Add: ไม่ส่งก็ได้ default=false อยู่แล้ว แต่ส่งไปก็ไม่เสียหาย
+      payload['disable'] = false;
+    }
 
-    // ====== ADD ======
-    // ถ้าคุณต้องการให้ปุ่ม Save ทำ "add" เสมอ:
-    this.api.addUserStock(ingredientId, payload).subscribe({
-      next: () => {
-        this.saving = false;
-        this.visible = false;
-        this.refreshUserStocks();
-      },
-      error: (err) => {
-        console.error(err);
-        this.saving = false;
-        this.errorMsg = 'บันทึกไม่สำเร็จ (เช็คว่า login แล้วและ CSRF/credentials ถูกต้อง)';
-      },
-    });
+    if (this.editingStockId) {
+      // --- MODE EDIT (PATCH) ---
+      this.api.updateUserStock(this.editingStockId, payload).subscribe({
+        next: () => {
+          this.saving = false;
+          this.visible = false;
+          this.refreshUserStocks();
+          this.toast.add({
+            severity: 'success',
+            summary: 'สำเร็จ',
+            detail: 'แก้ไขข้อมูลเรียบร้อย',
+          });
+        },
+        error: (err) => {
+          console.error(err);
+          this.saving = false;
+          this.errorMsg = 'แก้ไขไม่สำเร็จ';
+        },
+      });
+    } else {
+      // --- MODE ADD (POST) ---
+      const ingredientId = this.selectedIngredient.id;
+      this.api.addUserStock(ingredientId, payload).subscribe({
+        next: () => {
+          this.saving = false;
+          this.visible = false;
+          this.refreshUserStocks();
+          this.toast.add({
+            severity: 'success',
+            summary: 'สำเร็จ',
+            detail: 'เพิ่มวัตถุดิบเรียบร้อย',
+          });
+        },
+        error: (err) => {
+          console.error(err);
+          this.saving = false;
+          this.errorMsg = 'บันทึกไม่สำเร็จ';
+        },
+      });
+    }
 
     // ====== UPDATE (ถ้าต้องการ) ======
     // ถ้าคุณมีโหมด edit แล้วอยากใช้ patch:
@@ -181,13 +239,23 @@ export class IngredientsPageComponent implements OnInit {
     );
   }
 
-  onDelete(stock: any): void {
-    const ingredientId = stock.ingredient?.id ?? stock.ingredient_id;
-    if (!ingredientId) return;
+  onDelete(stock: IngredientRecord): void {
+    // ✅ แก้ไข: ใช้ stock.id (UserStock PK) แทน ingredient.id
+    if (!stock.id) return;
 
-    this.api.deleteUserStock(ingredientId).subscribe({
-      next: () => this.refreshUserStocks(),
-      error: (err) => console.error(err),
+    this.api.deleteUserStock(stock.id).subscribe({
+      next: () => {
+        this.refreshUserStocks();
+        this.toast.add({
+          severity: 'success',
+          summary: 'ลบสำเร็จ',
+          detail: 'ลบรายการวัตถุดิบแล้ว',
+        });
+      },
+      error: (err) => {
+        console.error(err);
+        this.toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: 'ลบไม่สำเร็จ' });
+      },
     });
   }
 

@@ -173,38 +173,61 @@
                 </div>
 
                 <ng-container *ngIf="!userStocksLoading && !userStockError">
-                  <div *ngIf="intersectingIngredients.length === 0" class="p-2 opacity-80">
+                  <div *ngIf="intersectingGroups.length === 0" class="p-2 opacity-80">
                     คุณยังไม่มีวัตถุดิบที่ตรงกับเมนูนี้
                   </div>
 
-                  <div *ngIf="intersectingIngredients.length > 0" class="flex flex-column gap-2">
-                    <label
-                      class="flex align-items-center gap-2"
-                      *ngFor="let item of intersectingIngredients"
-                      [for]="'ing-' + item.ingredientId"
+                  <div *ngIf="intersectingGroups.length > 0" class="flex flex-column gap-3">
+                    <div
+                      *ngFor="let group of intersectingGroups"
+                      class="border-bottom-1 surface-border pb-2"
                     >
-                      <p-checkbox
-                        [binary]="true"
-                        [inputId]="'ing-' + item.ingredientId"
-                        [ngModel]="selectedIngredientIds.has(item.ingredientId)"
-                        (onChange)="toggleIngredientSelection(item.ingredientId, $event.checked)"
-                      ></p-checkbox>
-
-                      <div class="flex flex-column">
-                        <span class="font-medium">{{ item.recipeIngredient.ingredient_name }}</span>
+                      <div class="font-medium mb-2 text-primary">
+                        {{ group.ingredientName }}
+                        <span class="text-sm opacity-70 text-color">
+                          (ใช้: {{ group.recipeIngredient.required_quantity ?? '-' }}
+                          {{ group.recipeIngredient.required_unit ?? '' }})
+                        </span>
                       </div>
-                    </label>
+
+                      <div class="flex flex-column gap-2 pl-3">
+                        <div *ngFor="let stock of group.stocks" class="field-checkbox mb-0">
+                          <p-checkbox
+                            [binary]="true"
+                            [inputId]="'stock-' + stock.id"
+                            [ngModel]="selectedStockIds.has(stock.id)"
+                            (onChange)="toggleStockSelection(stock.id, $event.checked)"
+                          ></p-checkbox>
+
+                          <label [for]="'stock-' + stock.id" class="cursor-pointer ml-2">
+                            <span *ngIf="stock.expiration_date">
+                              หมดอายุ: {{ stock.expiration_date }}
+                            </span>
+                            <span *ngIf="!stock.expiration_date" class="opacity-70">
+                              (ไม่ระบุวันหมดอายุ)
+                            </span>
+
+                            <span
+                              class="ml-2 text-sm surface-200 px-2 py-1 border-round"
+                              *ngIf="stock.quantity"
+                            >
+                              มี: {{ stock.quantity }}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
 
                     <div class="mt-3 flex flex-wrap gap-2 align-items-center">
                       <p-button
                         label="ลบออกจากวัตถุดิบของฉัน"
                         icon="pi pi-trash"
                         severity="danger"
-                        [disabled]="selectedIngredientIds.size === 0"
+                        [disabled]="selectedStockIds.size === 0"
                         [loading]="bulkDeleteLoading"
                         (onClick)="removeSelectedIngredients()"
                       />
-                      <span class="text-sm opacity-80">ติ๊กวัตถุดิบที่ใช้หมดแล้ว</span>
+                      <span class="text-sm opacity-80">เลือกเฉพาะรายการที่ใช้หมดแล้ว</span>
                     </div>
 
                     <div
@@ -224,7 +247,6 @@
                 </ng-container>
 
                 <div class="flex pt-4 justify-content-between">
-                  <!-- back to last cooking step if exists, else back to ingredients -->
                   <p-button
                     label="Back"
                     severity="secondary"
@@ -233,7 +255,6 @@
                       activateCallback(detailSteps.length > 0 ? detailSteps.length + 1 : 1)
                     "
                   />
-
                   <p-button label="ปิด" icon="pi pi-check" (onClick)="detailVisible = false" />
                 </div>
               </ng-template>
