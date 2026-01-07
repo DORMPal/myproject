@@ -150,7 +150,7 @@ export class IngredientsPageComponent implements OnInit {
 
   get expiringSoon(): number {
     const now = this.stripTime(new Date());
-    const soon = this.addDays(now, 3);
+    const soon = this.addDays(now, 4);
     return this.stocks.filter((s) => {
       if (!s.expiration_date) return false;
       const d = this.stripTime(new Date(s.expiration_date));

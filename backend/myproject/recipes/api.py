@@ -58,6 +58,7 @@ class RecipeViewSet(ReadOnlyModelViewSet):
 
         recommendation_rows = []
         for recipe in recipes:
+            # กรองเฉพาะวัตถุดิบที่ไม่ใช่ common (common=False)
             considered = [
                 ri
                 for ri in recipe.recipe_ingredients.all()
@@ -67,13 +68,17 @@ class RecipeViewSet(ReadOnlyModelViewSet):
             matched = sum(1 for ri in considered if ri.ingredient_id in user_ingredient_ids)
 
             # Skip recipes that match none of the considered ingredients
+            # (ถ้ามีวัตถุดิบหลักที่ต้องใช้ แต่เราไม่มีเลย ข้ามไป)
             if total_considered > 0 and matched == 0:
                 continue
 
             missing = total_considered - matched
+            
+            # คำนวณ % โดยไม่รวม common ingredients
             match_percentage = (
                 100.0 if total_considered == 0 else round((matched / total_considered) * 100, 2)
             )
+            
             missing_names = [
                 ri.ingredient.name
                 for ri in considered
@@ -91,11 +96,12 @@ class RecipeViewSet(ReadOnlyModelViewSet):
                 }
             )
 
+        # ✅ แก้ไขการเรียงลำดับตรงนี้
         recommendation_rows.sort(
             key=lambda item: (
-                item["missing_ingredient_count"],
-                -item["match_percentage"],
-                item["recipe"].id,
+                -item["match_percentage"],        # 1. เปอร์เซ็นต์มากสุดขึ้นก่อน (ติดลบเพื่อให้เรียงมากไปน้อย)
+                item["missing_ingredient_count"], # 2. ถ้า % เท่ากัน เอาอันที่ของขาดน้อยกว่าขึ้นก่อน
+                item["recipe"].id,                # 3. ถ้าเท่ากันหมด เรียงตาม ID
             )
         )
 
@@ -127,20 +133,20 @@ class RecipeViewSet(ReadOnlyModelViewSet):
     )
     def recommendations(self, request):
         """
-        Recommend recipes based on the user's active ingredients (top 10).
-        Ranking: fewest missing non-common ingredients, then highest match percentage.
+        Recommend recipes based on the user's active ingredients (top 5).
+        Ranking: Highest match percentage first, then fewest missing ingredients.
         """
         results = self._build_recommendations(
             request,
             self.get_queryset().select_related("thumbnail_obj"),
-            limit=10,
+            limit=5,
         )
         return Response({"count": len(results), "next": None, "previous": None, "results": results})
 
 
 class RecipeRecommendView(APIView):
     """
-    Standalone endpoint: GET /api/recommend (top 10 recommendations).
+    Standalone endpoint: GET /api/recommend (top 5 recommendations).
     """
 
     permission_classes = [IsAuthenticated]
@@ -150,6 +156,6 @@ class RecipeRecommendView(APIView):
         results = RecipeViewSet._build_recommendations(
             request,
             recipe_qs,
-            limit=10,
+            limit=5, 
         )
         return Response({"count": len(results), "next": None, "previous": None, "results": results})

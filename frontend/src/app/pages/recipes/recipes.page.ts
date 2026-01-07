@@ -81,6 +81,7 @@ export class RecipesPageComponent implements OnInit {
   availableTags: TagItem[] = [];
 
   // modal detail state
+  userOwnedSet = new Set<string>();
   detailVisible = false;
   detailLoading = false;
   detailError: string | null = null;
@@ -214,6 +215,7 @@ export class RecipesPageComponent implements OnInit {
     this.detailLoading = true;
     this.detailError = null;
     this.detailRecipe = null;
+    this.userOwnedSet.clear();
     this.detailSteps = [];
     this.selectedIngredientIds.clear();
     this.bulkDeleteError = null;
@@ -293,38 +295,27 @@ export class RecipesPageComponent implements OnInit {
     });
   }
 
-  /** ✅ Parse <ol><li>..</li></ol> -> [step1, step2, ...] (HTML-safe-ish) */
   private extractStepsFromInstructions(instructions: string | null): string[] {
     if (!instructions) return [];
 
-    // 1. Helper function: ลบ HTML Tags และ Decode Entities พื้นฐาน
     const cleanText = (str: string): string => {
       return str
-        .replace(/<[^>]+>/g, '') // ลบ HTML Tags
-        .replace(/&nbsp;/g, ' ') // เปลี่ยน &nbsp; เป็น space
-        .replace(/&amp;/g, '&') // เปลี่ยน &amp; เป็น &
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
         .trim();
     };
 
     let steps: string[] = [];
-
-    // ---------------------------------------------------------
-    // Strategy 1: ถ้ามี <li> ให้ใช้ <li> (แม่นยำที่สุด)
-    // ---------------------------------------------------------
     const liMatches = instructions.match(/<li[\s\S]*?<\/li>/gi);
 
     if (liMatches && liMatches.length > 0) {
       steps = liMatches.map((li) => cleanText(li));
-    }
-    // ---------------------------------------------------------
-    // Strategy 2: ถ้าไม่มี <li> ให้แบ่งตาม Block Elements (<p>, <br>, <div>)
-    // ---------------------------------------------------------
-    else {
-      // แปลงจุดจบของ Block Elements ให้เป็นตัวอักษรพิเศษ (เช่น Newline) เพื่อใช้ split
+    } else {
       const blockSeparated = instructions
-        .replace(/<\/(p|div|h[1-6])>/gi, '\n') // จบ paragraph ให้ขึ้นบรรทัดใหม่
-        .replace(/<br\s*\/?>/gi, '\n') // เจอ <br> ให้ขึ้นบรรทัดใหม่
-        .replace(/<\/?[^>]+(>|$)/g, ''); // ลบ tag อื่นๆ ที่เหลือออก
+        .replace(/<\/(p|div|h[1-6])>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?[^>]+(>|$)/g, '');
 
       // Split ด้วย Newline
       const lines = blockSeparated.split('\n');
@@ -332,20 +323,14 @@ export class RecipesPageComponent implements OnInit {
       steps = lines
         .map((line) => cleanText(line))
         .filter((line) => {
-          // Filter กรองข้อมูลขยะ
-          if (!line) return false; // ไม่เอาบรรทัดว่าง
-          if (line.includes('อ่านบทความเพิ่มเติม')) return false; // ตัดลิงก์ท้ายบทความ (เคสที่ 3)
-          if (line.length < 5) return false; // ตัดบรรทัดที่สั้นเกินไป (อาจจะเป็นเลขหน้า หรือเศษขยะ)
+          if (!line) return false;
+          if (line.includes('อ่านบทความเพิ่มเติม')) return false;
+          if (line.length < 5) return false;
           return true;
         });
     }
 
-    // ---------------------------------------------------------
-    // Final Cleanup: ลบตัวเลขนำหน้า (เช่น "1. ", "2. ")
-    // เพื่อให้ Frontend ไปใส่เลขเอง หรือแสดงผลได้สวยงามไม่ซ้ำซ้อน
-    // ---------------------------------------------------------
     return steps.map((step) => {
-      // Regex: ค้นหาตัวเลขต้นประโยค ตามด้วยจุด และเว้นวรรค (เช่น "1. ล้าง..." หรือ "2.ใส่...")
       return step.replace(/^\d+\.?\s*/, '');
     });
   }
@@ -392,7 +377,10 @@ export class RecipesPageComponent implements OnInit {
       const key = (stock.ingredient?.name || (stock as any).ingredient_name || '')
         .trim()
         .toLowerCase();
-      if (key) stockMap.set(key, stock);
+      if (key) {
+        stockMap.set(key, stock);
+        this.userOwnedSet.add(key);
+      }
     }
 
     const list: IntersectedIngredient[] = [];
@@ -418,5 +406,14 @@ export class RecipesPageComponent implements OnInit {
     }
 
     this.intersectingIngredients = list;
+  }
+
+  isMissing(ingredientName: string | undefined): boolean {
+    if (!ingredientName) return true; // ถ้าไม่มีชื่อ ถือว่าขาดไว้ก่อน
+    // ถ้ายังโหลดไม่เสร็จ ถือว่ายังไม่ขาด (จะได้ไม่แดงแวบเดียว)
+    if (this.userStocksLoading) return false;
+
+    const key = ingredientName.trim().toLowerCase();
+    return !this.userOwnedSet.has(key); // ถ้าไม่มีใน Set = ขาด (return true)
   }
 }
