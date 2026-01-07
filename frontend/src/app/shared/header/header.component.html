@@ -1,3 +1,4 @@
+<p-toast position="top-center"></p-toast>
 <header class="app-header shadow-1 px-3 py-2 flex align-items-center justify-content-between">
   <div class="brand flex align-items-center gap-2">
     <img class="logo" src="/assets/logo/logoProject.svg" alt="PantryChef logo" />
@@ -22,6 +23,16 @@
     </nav>
 
     <div class="user flex align-items-center gap-3 border-left-1 border-gray-300 pl-3">
+      <p-button
+        [icon]="isListening ? 'pi pi-stop' : 'pi pi-microphone'"
+        [rounded]="true"
+        [text]="true"
+        [severity]="isListening ? 'danger' : 'secondary'"
+        (click)="toggleSpeech()"
+        pTooltip="สั่งงานด้วยเสียง"
+        tooltipPosition="bottom"
+      >
+      </p-button>
       <span class="username text-800">{{ name?.name }}</span>
 
       <p-overlaybadge
@@ -142,6 +153,25 @@
             >Exp: {{ notification.expiration_date | date : 'dd/MM' }}</span
           >
         </div>
+      </div>
+    </div>
+    <div class="p-3 border-top-1 border-gray-200">
+      <div class="text-center mb-2 font-bold text-gray-500">Voice Command</div>
+
+      <button
+        pButton
+        [label]="isListening ? 'กำลังฟัง...' : 'กดเพื่อพูด'"
+        [icon]="isListening ? 'pi pi-spin pi-spinner' : 'pi pi-microphone'"
+        [severity]="isListening ? 'danger' : 'primary'"
+        class="w-full p-button-rounded"
+        (click)="toggleSpeech()"
+      ></button>
+
+      <div
+        *ngIf="voiceText"
+        class="mt-2 text-center text-sm text-blue-600 bg-blue-50 p-2 border-round"
+      >
+        "{{ voiceText }}"
       </div>
     </div>
 

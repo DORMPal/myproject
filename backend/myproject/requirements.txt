@@ -18,3 +18,6 @@ requests==2.32.5
 sqlparse==0.5.3
 tzlocal==5.3.1
 urllib3==2.5.0
+thefuzz
+python-Levenshtein
+python-dateutil

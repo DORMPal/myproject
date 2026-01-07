@@ -231,4 +231,9 @@ export class ApiService {
       ...this.httpOptions,
     });
   }
+
+  sendVoiceCommand(text: string): Observable<any> {
+    // ต้องเป็น /voice-command เฉยๆ เพราะเมื่อรวมกับ baseUrl จะได้ /api/voice-command
+    return this.http.post(`${this.baseUrl}/voice-command`, { text }, this.httpOptions);
+  }
 }

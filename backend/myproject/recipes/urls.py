@@ -16,6 +16,7 @@ from .api_views import (
     NotificationListView,
     NotificationDetailView,
     TagListView,
+    # VoiceCommandView,
 )
 
 router = DefaultRouter()
@@ -62,4 +63,5 @@ urlpatterns = [
     path("tags", TagListView.as_view(), name="tag-list"),
     # GET /api/recommend (top 10)
     path("recommend", RecipeRecommendView.as_view(), name="recipe-recommend"),
+    # path('voice-command', VoiceCommandView.as_view(), name='voice-command'),
 ]

@@ -1,4 +1,10 @@
 # recipes/api_views.py
+
+import json
+import requests
+from datetime import date, datetime,timedelta
+# from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -8,10 +14,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+# from thefuzz import process
+from .models import Ingredient, UserStock
+
 from .models import Ingredient, Recipe, UserStock, Notification, Tag
 from .serializers import IngredientSerializer, UserStockSerializer, NotificationSerializer, TagSerializer
 
 User = get_user_model()
+OLLAMA_API_URL = getattr(settings, 'OLLAMA_API_URL', 'http://ollama:11434/api/generate')
 
 
 class IngredientDeleteWithRecipesView(APIView):
@@ -265,3 +275,124 @@ class TagListView(APIView):
         tags = Tag.objects.all().order_by('name')
         data = TagSerializer(tags, many=True).data
         return Response(data)
+
+# class VoiceCommandView(APIView):
+#     """
+#     POST /api/voice-command
+#     """
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, *args, **kwargs):
+#         user_text = request.data.get('text', '')
+#         if not user_text:
+#             return Response({'success': False, 'message': 'ไม่ได้รับข้อความเสียง'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         print(f"🎤 [VOICE] User text: {user_text}")
+
+#         # today_str = date.today().isoformat()
+#         today = date.today()
+
+#         # ✅ 1. แก้ Prompt: ย้ำเรื่อง Format YYYY-MM-DD ให้ชัดเจนขึ้น
+#         system_prompt = f"""
+#         You are an inventory assistant. Current Date: {today.isoformat()}
+#         Extract data into JSON format only.
+        
+#         Fields: 
+#         - "action": "add" or "remove"
+#         - "item": ingredient name (string)
+#         - "is_fixed_date": boolean (true if user says specific date like "1 Jan", false if relative like "next week")
+#         - "date_value": string (if fixed date: "YYYY-MM-DD", if relative: number of days/months/years)
+#         - "date_unit": string (only for relative: "day", "week", "month", "year")
+        
+#         Example 1: "ซื้อกีวี อีก 2 ปีหมดอายุ" -> {{"action": "add", "item": "กีวี", "is_fixed_date": false, "date_value": "2", "date_unit": "year"}}
+#         Example 2: "นมหมดอายุพรุ่งนี้" -> {{"action": "add", "item": "นม", "is_fixed_date": false, "date_value": "1", "date_unit": "day"}}
+#         Example 3: "หมูหมดอายุ 31 ธันวา" -> {{"action": "add", "item": "หมู", "is_fixed_date": true, "date_value": "{today.year}-12-31", "date_unit": null}}
+#         """
+
+#         try:
+#             payload = {
+#                 "model": "qwen2.5:1.5b", 
+#                 "prompt": f"{system_prompt}\nUser Input: {user_text}\nJSON Output:",
+#                 "stream": False,
+#                 "format": "json"
+#             }
+#             ollama_resp = requests.post(OLLAMA_API_URL, json=payload, timeout=30)
+#             ai_data = ollama_resp.json()
+            
+#             raw_response = ai_data.get('response', '{}')
+#             print(f"🤖 [OLLAMA] Response: {raw_response}")
+            
+#             parsed_data = json.loads(raw_response)
+#         except Exception as e:
+#             print(f"❌ [ERROR] AI Failed: {e}")
+#             return Response({'success': False, 'message': 'AI ประมวลผลไม่สำเร็จ'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#         action = parsed_data.get('action', 'add')
+#         item_name = parsed_data.get('item', '')
+#         expiration_date_str = parsed_data.get('expiration_date', None) # รับค่าเป็น String ก่อน
+
+#         # ✅ 2. เพิ่ม Logic แปลงวันที่ (Date Parsing) ให้รองรับหลาย Format กันเหนียว
+#         final_expiration_date = None
+#         if expiration_date_str:
+#             try:
+#                 # ลองแปลงแบบ YYYY-MM-DD (มาตรฐาน)
+#                 final_expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date()
+#             except ValueError:
+#                 try:
+#                     # ถ้าพัง ลองแปลงแบบ MM-DD-YYYY (แบบที่ AI เพิ่งส่งผิดมา)
+#                     final_expiration_date = datetime.strptime(expiration_date_str, '%m-%d-%Y').date()
+#                 except ValueError:
+#                     try:
+#                         # ถ้าพังอีก ลองแปลงแบบ DD-MM-YYYY
+#                         final_expiration_date = datetime.strptime(expiration_date_str, '%d-%m-%Y').date()
+#                     except ValueError:
+#                         print(f"⚠️ Date format invalid: {expiration_date_str} -> Ignored")
+#                         final_expiration_date = None
+
+#         if not item_name:
+#             return Response({'success': False, 'message': 'ไม่เข้าใจชื่อวัตถุดิบ'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Fuzzy Match
+#         # แก้ไขบรรทัดนี้ตามที่คุณเคยแจ้ง (filter common=False)
+#         all_ingredients = list(
+#             Ingredient.objects
+#             .filter(common=False)
+#             .values_list('name', flat=True)
+#         )
+#         best_match, score = process.extractOne(item_name, all_ingredients)
+#         print(f"🔍 [MATCH] '{item_name}' -> '{best_match}' ({score}%)")
+
+#         if score < 60:
+#             return Response({'success': False, 'message': f"หา '{item_name}' ไม่เจอในระบบ"}, status=status.HTTP_404_NOT_FOUND)
+
+#         # Update DB
+#         ingredient_obj = Ingredient.objects.get(name=best_match)
+#         stock, created = UserStock.objects.get_or_create(
+#             user=request.user,
+#             ingredient=ingredient_obj,
+#             defaults={'quantity': 1}
+#         )
+        
+#         message = ""
+        
+#         if action == 'remove':
+#             stock.expiration_date = None
+#             message = f"ลบวันหมดอายุของ {best_match} แล้ว"
+#         else:
+#             if final_expiration_date:
+#                 # ✅ ใช้ตัวแปรที่แปลงเป็น Python Date Object แล้ว (Django จะไม่งอแง)
+#                 stock.expiration_date = final_expiration_date 
+#                 message = f"อัปเดต {best_match} วันหมดอายุ {final_expiration_date}"
+#             else:
+#                 message = f"อัปเดต {best_match} (ไม่ได้ระบุวันหมดอายุ)"
+        
+#         stock.save()
+
+#         return Response({
+#             'success': True,
+#             'message': message,
+#             'data': {
+#                 'item': best_match,
+#                 'expiration_date': stock.expiration_date
+#             }
+#         })

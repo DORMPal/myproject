@@ -18,6 +18,16 @@ services:
     networks:
       - mynetwork
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_service
+    restart: always
+    ports:
+      - "11434:11434" # เปิด Port เพื่อให้เราสั่ง pull model ผ่าน API หรือ Terminal ได้
+    volumes:
+      - ollama_data:/root/.ollama # 👈 สำคัญ! เก็บ Model ไว้ใน Volume (ปิดเครื่องข้อมูลไม่หาย)
+    networks:
+      - mynetwork
   backend:
     build:
       context: ./backend/myproject
@@ -29,8 +39,12 @@ services:
     # ✅ ใช้ env_file บรรทัดเดียวจบ (มันจะโหลดทุกอย่างใน .env เข้ามา)
     env_file:
       - .env
+    environment:
+      # ✅ เพิ่มตัวแปรให้ Backend รู้จักที่อยู่ของ Ollama
+      - OLLAMA_API_URL=http://ollama:11434/api/generate
     depends_on:
       - db
+      - ollama
     volumes:
       - ./backend/myproject:/app
     networks:
@@ -73,6 +87,7 @@ services:
 
 volumes:
   mysql_data:
+  ollama_data:
 
 networks:
   mynetwork:
