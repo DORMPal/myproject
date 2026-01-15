@@ -21,3 +21,13 @@ urllib3==2.5.0
 thefuzz
 python-Levenshtein
 python-dateutil
+livekit
+livekit-api
+# livekit-agents>=0.8.0  
+livekit-agents
+livekit-plugins-openai
+livekit-plugins-deepgram
+livekit-plugins-silero
+thefuzz
+asgiref
+django-csp

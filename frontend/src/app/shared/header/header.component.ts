@@ -9,8 +9,9 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api'; // ✅ เพิ่ม MessageService
 import { ToastModule } from 'primeng/toast';
+import { VoiceChatComponent } from '../../pages/voicechat/voice-chat.page';
 
-type HeaderTab = 'recipes' | 'ingredients' | '';
+type HeaderTab = 'recipes' | 'ingredients' | 'voice' | '';
 interface Name {
   email: string;
   id: number;
@@ -36,6 +37,7 @@ declare global {
     ButtonModule,
     TooltipModule,
     ToastModule,
+    VoiceChatComponent,
   ],
   providers: [MessageService], // ✅ เพิ่ม MessageService ใน providers
   templateUrl: './header.component.html',
@@ -51,6 +53,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   recognition: any = null;
   isListening: boolean = false;
   voiceText: string = '';
+
+  showVoiceChat: boolean = false;
 
   constructor(
     private readonly router: Router,
@@ -140,125 +144,125 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.sidebarVisible = false;
   }
 
-  toggleSpeech() {
-    if (this.isListening) {
-      this.stopListening();
-    } else {
-      this.startListening();
-    }
-  }
+  // toggleSpeech() {
+  //   if (this.isListening) {
+  //     this.stopListening();
+  //   } else {
+  //     this.startListening();
+  //   }
+  // }
 
-  startListening() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Browser นี้ไม่รองรับการสั่งงานด้วยเสียง',
-      });
-      return;
-    }
+  // startListening() {
+  //   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  //   if (!SpeechRecognition) {
+  //     this.messageService.add({
+  //       severity: 'error',
+  //       summary: 'Error',
+  //       detail: 'Browser นี้ไม่รองรับการสั่งงานด้วยเสียง',
+  //     });
+  //     return;
+  //   }
 
-    // Init แค่ครั้งเดียว
-    if (!this.recognition) {
-      this.recognition = new SpeechRecognition();
-      this.recognition.lang = 'th-TH';
-      this.recognition.continuous = false; // ให้มันหยุดเองเมื่อพูดจบประโยค หรือรอเรากดหยุด
-      this.recognition.interimResults = false;
+  //   // Init แค่ครั้งเดียว
+  //   if (!this.recognition) {
+  //     this.recognition = new SpeechRecognition();
+  //     this.recognition.lang = 'th-TH';
+  //     this.recognition.continuous = false; // ให้มันหยุดเองเมื่อพูดจบประโยค หรือรอเรากดหยุด
+  //     this.recognition.interimResults = false;
 
-      this.recognition.onstart = () => {
-        // ✅ ใช้ ngZone.run เพื่อให้ Angular รู้ว่าตัวแปรเปลี่ยน (Update UI ทันที)
-        this.ngZone.run(() => {
-          this.isListening = true;
-          this.voiceText = 'กำลังฟัง...';
-          console.log('🎙️ Started listening');
-        });
-      };
+  //     this.recognition.onstart = () => {
+  //       // ✅ ใช้ ngZone.run เพื่อให้ Angular รู้ว่าตัวแปรเปลี่ยน (Update UI ทันที)
+  //       this.ngZone.run(() => {
+  //         this.isListening = true;
+  //         this.voiceText = 'กำลังฟัง...';
+  //         console.log('🎙️ Started listening');
+  //       });
+  //     };
 
-      this.recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        this.ngZone.run(() => {
-          this.voiceText = transcript;
-          console.log('🗣️ Transcript:', transcript);
-          // เรียก API ทันทีที่พูดจบ
-          this.processVoiceCommand(transcript);
-        });
-      };
+  //     this.recognition.onresult = (event: any) => {
+  //       const transcript = event.results[0][0].transcript;
+  //       this.ngZone.run(() => {
+  //         this.voiceText = transcript;
+  //         console.log('🗣️ Transcript:', transcript);
+  //         // เรียก API ทันทีที่พูดจบ
+  //         this.processVoiceCommand(transcript);
+  //       });
+  //     };
 
-      this.recognition.onerror = (event: any) => {
-        this.ngZone.run(() => {
-          console.error('Speech Error:', event.error);
-          this.isListening = false;
-          this.voiceText = '';
-          // แจ้งเตือน Error เล็กน้อยถ้าไม่ใช่การกดปิดเอง
-          if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            this.messageService.add({
-              severity: 'error',
-              summary: 'Microphone Error',
-              detail: event.error,
-            });
-          }
-        });
-      };
+  //     this.recognition.onerror = (event: any) => {
+  //       this.ngZone.run(() => {
+  //         console.error('Speech Error:', event.error);
+  //         this.isListening = false;
+  //         this.voiceText = '';
+  //         // แจ้งเตือน Error เล็กน้อยถ้าไม่ใช่การกดปิดเอง
+  //         if (event.error !== 'no-speech' && event.error !== 'aborted') {
+  //           this.messageService.add({
+  //             severity: 'error',
+  //             summary: 'Microphone Error',
+  //             detail: event.error,
+  //           });
+  //         }
+  //       });
+  //     };
 
-      this.recognition.onend = () => {
-        this.ngZone.run(() => {
-          this.isListening = false;
-          console.log('🛑 Stopped listening');
-        });
-      };
-    }
+  //     this.recognition.onend = () => {
+  //       this.ngZone.run(() => {
+  //         this.isListening = false;
+  //         console.log('🛑 Stopped listening');
+  //       });
+  //     };
+  //   }
 
-    this.recognition.start();
-  }
+  //   this.recognition.start();
+  // }
 
-  stopListening() {
-    if (this.recognition) {
-      this.recognition.stop();
-      this.isListening = false;
-    }
-  }
+  // stopListening() {
+  //   if (this.recognition) {
+  //     this.recognition.stop();
+  //     this.isListening = false;
+  //   }
+  // }
 
-  processVoiceCommand(text: string) {
-    if (!text) return;
+  // processVoiceCommand(text: string) {
+  //   if (!text) return;
 
-    // 1. แจ้งเตือนว่ากำลังส่งข้อมูล
-    this.messageService.add({
-      severity: 'info',
-      summary: 'กำลังประมวลผล...',
-      detail: `"${text}"`,
-      life: 3000,
-    });
+  //   // 1. แจ้งเตือนว่ากำลังส่งข้อมูล
+  //   this.messageService.add({
+  //     severity: 'info',
+  //     summary: 'กำลังประมวลผล...',
+  //     detail: `"${text}"`,
+  //     life: 3000,
+  //   });
 
-    // 2. เรียก API
-    this.api.sendVoiceCommand(text).subscribe({
-      next: (res: any) => {
-        // 3. สำเร็จ: แสดงข้อความจาก Backend (เช่น "เพิ่มไข่ไก่ 3 ฟอง เรียบร้อย")
-        if (res.success) {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'สำเร็จ',
-            detail: res.message,
-            life: 5000,
-          });
+  //   // 2. เรียก API
+  //   this.api.sendVoiceCommand(text).subscribe({
+  //     next: (res: any) => {
+  //       // 3. สำเร็จ: แสดงข้อความจาก Backend (เช่น "เพิ่มไข่ไก่ 3 ฟอง เรียบร้อย")
+  //       if (res.success) {
+  //         this.messageService.add({
+  //           severity: 'success',
+  //           summary: 'สำเร็จ',
+  //           detail: res.message,
+  //           life: 5000,
+  //         });
 
-          // Optional: ถ้าอยากให้ Notification อัปเดตด้วย (กรณีมีแจ้งเตือนของใกล้หมดอายุที่ถูกเพิ่มเข้ามาใหม่)
-          // this.loadNotifications();
-        } else {
-          // กรณี Backend ตอบกลับมาแต่ success = false (เช่น หาของไม่เจอ)
-          this.messageService.add({
-            severity: 'warn',
-            summary: 'ตรวจสอบข้อมูล',
-            detail: res.message,
-          });
-        }
-      },
-      error: (err) => {
-        // 4. ผิดพลาด: แจ้งเตือน Error
-        console.error('API Error:', err);
-        const errorMsg = err.error?.message || 'ระบบขัดข้อง กรุณาลองใหม่';
-        this.messageService.add({ severity: 'error', summary: 'ผิดพลาด', detail: errorMsg });
-      },
-    });
-  }
+  //         // Optional: ถ้าอยากให้ Notification อัปเดตด้วย (กรณีมีแจ้งเตือนของใกล้หมดอายุที่ถูกเพิ่มเข้ามาใหม่)
+  //         // this.loadNotifications();
+  //       } else {
+  //         // กรณี Backend ตอบกลับมาแต่ success = false (เช่น หาของไม่เจอ)
+  //         this.messageService.add({
+  //           severity: 'warn',
+  //           summary: 'ตรวจสอบข้อมูล',
+  //           detail: res.message,
+  //         });
+  //       }
+  //     },
+  //     error: (err) => {
+  //       // 4. ผิดพลาด: แจ้งเตือน Error
+  //       console.error('API Error:', err);
+  //       const errorMsg = err.error?.message || 'ระบบขัดข้อง กรุณาลองใหม่';
+  //       this.messageService.add({ severity: 'error', summary: 'ผิดพลาด', detail: errorMsg });
+  //     },
+  //   });
+  // }
 }

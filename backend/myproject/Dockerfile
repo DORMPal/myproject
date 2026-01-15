@@ -1,5 +1,6 @@
 # Use Python 3.11 slim image as base
-FROM python:3.14
+FROM python:3.12-slim
+# FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,6 +15,8 @@ RUN apt-get update \
         default-libmysqlclient-dev \
         build-essential \
         pkg-config \
+        libglib2.0-0 \
+        # libglib2.0-dev \
     && rm -rf /var/lib/apt/lists/*
 # CMD ["python", "--version"]
 # RUN pip install --upgrade pip 
@@ -22,6 +25,7 @@ RUN apt-get update \
 
 # Install Python dependencies
 COPY requirements.txt /app/
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project

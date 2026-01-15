@@ -53,6 +53,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware", # CORS ควรอยู่อันแรกๆ
     "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    # 'csp.middleware.CSPMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -80,7 +81,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
-# Database
+# Database_______________
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -199,6 +200,27 @@ SOCIALACCOUNT_PROVIDERS = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CSP_DEFAULT_SRC = ("'self'",)
+
+# # อนุญาต Style (CSS) และ Script (JS)
+# # 'unsafe-inline' จำเป็นสำหรับ Angular หรือ Script ที่ฝังใน HTML
+# CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com")
+# CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'") 
+
+# # อนุญาตรูปภาพ
+# CSP_IMG_SRC = ("'self'", "data:", "https:")
+
+# # ✅✅ ส่วนสำคัญสำหรับ LiveKit ✅✅
+# # ต้องอนุญาต wss:// (WebSocket) และ https:// ไปยัง livekit.cloud
+# CSP_CONNECT_SRC = (
+#     "'self'",
+#     "http://localhost:4200",   # Frontend Dev
+#     "http://localhost:8000",   # Backend API
+#     "https://*.livekit.cloud", # LiveKit HTTPS
+#     "wss://*.livekit.cloud",   # LiveKit WebSocket (สำคัญมาก!)
+#     "https://accounts.google.com", # ถ้ามี Google Login
+# )
+
 # --- AI Configuration (Ollama) ---
 # เพิ่มไว้เพื่อให้ views.py เรียกใช้ได้ (ค่า Default คือ docker service name)
-OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://ollama:11434/api/generate')
+# OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://ollama:11434/api/generate')

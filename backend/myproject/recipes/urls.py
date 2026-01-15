@@ -17,7 +17,8 @@ from .api_views import (
     NotificationListView,
     NotificationDetailView,
     TagListView,
-    VoiceCommandView,
+    # VoiceCommandView,
+    LiveKitTokenView,
 )
 
 router = DefaultRouter()
@@ -83,5 +84,6 @@ urlpatterns = [
     path("recommend", RecipeRecommendView.as_view(), name="recipe-recommend"),
     
     # Voice Command
-    path('voice-command', VoiceCommandView.as_view(), name='voice-command'),
+    # path('voice-command', VoiceCommandView.as_view(), name='voice-command'),
+    path('livekit/token', LiveKitTokenView.as_view(), name='livekit-token'),
 ]

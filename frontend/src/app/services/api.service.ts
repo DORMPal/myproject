@@ -246,8 +246,12 @@ export class ApiService {
     });
   }
 
-  sendVoiceCommand(text: string): Observable<any> {
-    // ต้องเป็น /voice-command เฉยๆ เพราะเมื่อรวมกับ baseUrl จะได้ /api/voice-command
-    return this.http.post(`${this.baseUrl}/voice-command`, { text }, this.httpOptions);
+  // sendVoiceCommand(text: string): Observable<any> {
+  //   // ต้องเป็น /voice-command เฉยๆ เพราะเมื่อรวมกับ baseUrl จะได้ /api/voice-command
+  //   return this.http.post(`${this.baseUrl}/voice-command`, { text }, this.httpOptions);
+  // }
+
+  getLiveKitToken(): Observable<{ token: string }> {
+    return this.http.get<{ token: string }>(`${this.baseUrl}/livekit/token`, this.httpOptions);
   }
 }

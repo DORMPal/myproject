@@ -32,6 +32,7 @@
     "@angular/router": "20.3.15",
     "@primeuix/themes": "^2.0.2",
     "@tailwindcss/cli": "^4.1.17",
+    "livekit-client": "^2.16.1",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
     "primeng": "^20.4.0",
