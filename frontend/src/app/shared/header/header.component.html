@@ -9,52 +9,31 @@
     <nav class="nav flex align-items-center gap-4">
       <a class="nav-link" [class.active]="active === 'recipes'" routerLink="/page/recipes">
         <span class="icon">
-          <img src="/assets/header/recipeLogo.svg" alt="Recipes" />
+          <!-- <img src="/assets/header/recipeLogo.svg" alt="Recipes" /> -->
+          <i class="pi pi-book text-xl"></i>
         </span>
         <span class="label">สูตรอาหาร</span>
       </a>
 
       <a class="nav-link" [class.active]="active === 'ingredients'" routerLink="/page/ingredient">
         <span class="icon">
-          <img src="/assets/header/ingredientLogo.svg" alt="Ingredients" />
+          <!-- <img src="/assets/header/ingredientLogo.svg" alt="Ingredients" /> -->
+          <i class="pi pi-list text-xl"></i>
         </span>
         <span class="label">วัตถุดิบของฉัน</span>
       </a>
 
-      <!-- <a
-        class="nav-link cursor-pointer"
-        [class.active]="showVoiceChat"
-        (click)="showVoiceChat = true"
-      >
+      <!-- <app-voice-chat #voiceChat [(visible)]="showVoiceChat"></app-voice-chat> -->
+
+      <a class="nav-link cursor-pointer" routerLink="/page/voice-chat" routerLinkActive="active">
         <span class="icon">
-          <i class="pi pi-microphone text-xl" style="color: inherit"></i>
+          <i class="pi pi-microphone text-xl"></i>
         </span>
-        <span class="label">สั่งการด้วยเสียง</span>
-      </a> -->
-
-      <app-voice-chat #voiceChat [(visible)]="showVoiceChat"></app-voice-chat>
-
-      <a
-        class="nav-link cursor-pointer"
-        [class.active]="showVoiceChat"
-        (click)="voiceChat.openChat()"
-      >
-        <span class="icon"><i class="pi pi-microphone text-xl"></i></span>
         <span class="label">สั่งการด้วยเสียง</span>
       </a>
     </nav>
 
     <div class="user flex align-items-center gap-3 border-left-1 border-gray-300 pl-3">
-      <!-- <p-button
-        [icon]="isListening ? 'pi pi-stop' : 'pi pi-microphone'"
-        [rounded]="true"
-        [text]="true"
-        [severity]="isListening ? 'danger' : 'secondary'"
-        (click)="toggleSpeech()"
-        pTooltip="สั่งงานด้วยเสียง"
-        tooltipPosition="bottom"
-      >
-      </p-button> -->
       <span class="username text-800">{{ name?.name }}</span>
 
       <p-overlaybadge
@@ -147,14 +126,14 @@
       </a>
 
       <a
-        routerLink="/page/ingredient"
+        routerLink="/page/voice-chat"
         class="flex align-items-center gap-3 p-3 border-round text-black-alpha-90 no-underline hover:bg-gray-100 transition-duration-150"
         [class.bg-blue-50]="active === 'voice'"
         [class.text-black-alpha-90]="active === 'voice'"
         [class.text-white]="active !== 'voice'"
         (click)="closeSidebar()"
       >
-        <i class="pi pi-box text-xl"></i>
+        <i class="pi pi-microphone text-xl"></i>
         <span class="font-medium">สั่งการด้วยเสียง</span>
       </a>
     </div>
@@ -189,25 +168,6 @@
         </div>
       </div>
     </div>
-    <!-- <div class="p-3 border-top-1 border-gray-200">
-      <div class="text-center mb-2 font-bold text-gray-500">Voice Command</div>
-
-      <button
-        pButton
-        [label]="isListening ? 'กำลังฟัง...' : 'กดเพื่อพูด'"
-        [icon]="isListening ? 'pi pi-spin pi-spinner' : 'pi pi-microphone'"
-        [severity]="isListening ? 'danger' : 'primary'"
-        class="w-full p-button-rounded"
-        (click)="toggleSpeech()"
-      ></button>
-
-      <div
-        *ngIf="voiceText"
-        class="mt-2 text-center text-sm text-blue-600 bg-blue-50 p-2 border-round"
-      >
-        "{{ voiceText }}"
-      </div>
-    </div> -->
 
     <div class="mt-auto pt-3 border-top-1 border-gray-200">
       <button

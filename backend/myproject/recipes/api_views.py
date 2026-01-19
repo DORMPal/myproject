@@ -1,6 +1,7 @@
 # recipes/api_views.py
 
 import json
+import uuid
 import requests
 from datetime import date, datetime,timedelta
 from dateutil.relativedelta import relativedelta
@@ -437,9 +438,10 @@ class LiveKitTokenView(APIView):
         token.with_name(user.get_full_name() or user.username)
         
         # ให้สิทธิ์เข้าห้อง
+        my_uuid = str(uuid.uuid4())
         token.with_grants(api.VideoGrants(
             room_join=True,
-            room="kitchen-voice-room", 
+            room="kitchen-voice-room" + f"{my_uuid}", 
         ))
 
         return Response({"token": token.to_jwt()})

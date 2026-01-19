@@ -31,3 +31,4 @@ livekit-plugins-silero
 thefuzz
 asgiref
 django-csp
+pydantic>=2.0

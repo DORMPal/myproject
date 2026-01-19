@@ -27,6 +27,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/recipes/recipes.page').then((m) => m.RecipesPageComponent),
       },
+      {
+        path: 'voice-chat',
+        loadComponent: () =>
+          import('./pages/voicechat/voice-chat.page').then((m) => m.VoiceChatComponent),
+      },
     ],
   },
 

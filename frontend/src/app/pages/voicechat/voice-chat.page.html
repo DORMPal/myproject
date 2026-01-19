@@ -1,4 +1,4 @@
-<p-dialog
+<!-- <p-dialog
   [(visible)]="visible"
   [modal]="true"
   [style]="{ width: '400px', height: '600px' }"
@@ -71,4 +71,63 @@
       <small class="text-500">กดเพื่อพูดคุย</small>
     </div>
   </ng-template>
-</p-dialog>
+</p-dialog> -->
+<app-header active="voice" />
+<div class="page">
+  <!-- Header ของหน้า -->
+  <div class="voice-header flex align-items-center gap-2 p-3 border-bottom-1">
+    <i class="pi pi-microphone text-xl"></i>
+    <span class="font-semibold text-lg">AI Kitchen Assistant</span>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-container flex-1 flex flex-column gap-3 p-3 overflow-y-auto" #chatContainer>
+    <div
+      *ngFor="let msg of messages"
+      class="message flex gap-2"
+      [ngClass]="{
+        'align-self-end user': msg.sender === 'user',
+        'align-self-start ai': msg.sender === 'ai'
+      }"
+    >
+      <!-- <div class="avatar" *ngIf="msg.sender === 'ai'">
+        <img src="/assets/logo/logoProject.svg" alt="AI" />
+      </div> -->
+
+      <div
+        class="bubble p-3 border-round-xl shadow-1"
+        [ngClass]="{
+          'bg-blue-500 text-white': msg.sender === 'user',
+          'bg-gray-100 text-900': msg.sender === 'ai'
+        }"
+      >
+        {{ msg.text }}
+        <div class="text-xs mt-1 opacity-70 text-right">
+          {{ msg.time | date : 'shortTime' }}
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isProcessing" class="message ai align-self-start">
+      <div class="bubble bg-gray-50 text-500 font-italic">
+        <i class="pi pi-spin pi-spinner mr-2"></i> กำลังคิด...
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer / Mic -->
+  <div class="voice-footer p-3 border-top-1 flex flex-column align-items-center gap-2">
+    <div class="text-sm text-500">{{ statusText }}</div>
+
+    <button
+      pButton
+      type="button"
+      [icon]="isListening ? 'pi pi-stop' : 'pi pi-microphone'"
+      class="p-button-rounded p-button-lg"
+      [severity]="isListening ? 'danger' : 'primary'"
+      (click)="toggleSpeech()"
+    ></button>
+
+    <small class="text-500">กดเพื่อพูด</small>
+  </div>
+</div>

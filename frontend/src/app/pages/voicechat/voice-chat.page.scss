@@ -1,3 +1,16 @@
+:host {
+  background: #f8f3eb;
+}
+
+.page {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: #f8f3eb;
+  height: 90%;
+}
+
 .chat-container {
   height: 400px; // ความสูงของพื้นที่แชท
   scroll-behavior: smooth;
