@@ -48,7 +48,7 @@ export class VoiceChatComponent implements OnInit, OnDestroy {
   constructor(
     private api: ApiService,
     private ngZone: NgZone,
-    private messageService: MessageService
+    private messageService: MessageService,
   ) {}
 
   async ngOnInit() {

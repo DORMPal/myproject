@@ -72,7 +72,8 @@ export class IngredientsPageComponent implements OnInit {
     this.loading = true;
     this.api.getUserStocks().subscribe({
       next: (rows) => {
-        // console.log('rows=', rows);
+        console.log('Fetched user stocks');
+        console.log('rows=', rows);
         this.stocks = rows || [];
         this.loading = false;
       },
@@ -225,7 +226,7 @@ export class IngredientsPageComponent implements OnInit {
         // if (!s.expiration_date) return false;
         // return this.stripTime(new Date(s.expiration_date)) <= now;
         // console.log(s);
-        s.disable === true
+        s.disable === true,
     );
     // console.log(a, b, this.stocks);
     return a.length;
@@ -235,7 +236,7 @@ export class IngredientsPageComponent implements OnInit {
     const term = this.searchTerm.trim().toLowerCase();
     if (!term) return this.stocks;
     return this.stocks.filter((i) =>
-      (i.ingredient?.name || i.ingredient_name || '').toLowerCase().includes(term)
+      (i.ingredient?.name || i.ingredient_name || '').toLowerCase().includes(term),
     );
   }
 

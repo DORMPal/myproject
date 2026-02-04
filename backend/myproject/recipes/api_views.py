@@ -72,7 +72,7 @@ class UserIngredientListView(APIView):
             # UserStock.objects.filter(user=user, disable=False)
             UserStock.objects.filter(user=user)
             .select_related("ingredient")
-            .order_by("-date_added")
+            .order_by("expiration_date")
         )
         data = UserStockSerializer(stocks, many=True).data
         return Response(data)
@@ -145,6 +145,7 @@ class UserStockDetailView(APIView):
         
         if updated:
             stock.save()
+            Notification.objects.filter(user=user, user_stock=stock).delete()
 
         return Response(UserStockSerializer(stock).data)
 
