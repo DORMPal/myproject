@@ -7,15 +7,17 @@ import os
 import sys
 import math
 from typing import List, Dict, Optional
-from datetime import date
+from datetime import date, timedelta
 
 # ================= Django =================
 import django
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from asgiref.sync import sync_to_async
+from django.db.models import Prefetch
 
 # ================= LiveKit =================
+# from recipes.models import Recipe, RecipeIngredient
 from livekit import rtc
 from livekit.agents import (
     AutoSubscribe,
@@ -143,7 +145,7 @@ async def entrypoint(ctx: JobContext):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "my_project.settings")
     django.setup()
 
-    from recipes.models import Ingredient, UserStock
+    from recipes.models import Ingredient, UserStock,Recipe, RecipeIngredient
     User = get_user_model()
 
     # ======================================================
@@ -210,6 +212,196 @@ async def entrypoint(ctx: JobContext):
     # ======================================================
     print("🛠️ Setting up tools function...")
     @function_tool
+    async def recommend_recipes_for_user(limit: int = 3):
+        @sync_to_async
+        def _get():
+            user_ingredient_ids = set(
+                UserStock.objects
+                .filter(user=user, disable=False)
+                .values_list("ingredient_id", flat=True)
+            )
+
+            recipes = Recipe.objects.prefetch_related(
+                Prefetch(
+                    "recipe_ingredients",
+                    queryset=RecipeIngredient.objects.select_related("ingredient"),
+                )
+            )
+
+            rows = []
+            for recipe in recipes:
+                considered = [
+                    ri for ri in recipe.recipe_ingredients.all()
+                    if ri.ingredient and not ri.ingredient.common
+                ]
+
+                total = len(considered)
+                matched = sum(
+                    1 for ri in considered
+                    if ri.ingredient_id in user_ingredient_ids
+                )
+
+                if total > 0 and matched == 0:
+                    continue
+
+                missing = total - matched
+                match_percentage = 100.0 if total == 0 else round((matched / total) * 100, 2)
+
+                missing_names = [
+                    ri.ingredient.name
+                    for ri in considered
+                    if ri.ingredient_id not in user_ingredient_ids
+                ]
+
+                rows.append({
+                    "recipe_name": recipe.title,
+                    "match_percentage": match_percentage,
+                    "missing_ingredient_count": missing,
+                    "missing_ingredients": missing_names,
+                })
+
+            rows.sort(
+                key=lambda r: (
+                    -r["match_percentage"],
+                    r["missing_ingredient_count"],
+                )
+            )
+
+            return rows[:limit]
+
+        results = await _get()
+        return {"count": len(results), "results": results}
+
+    @function_tool
+    async def recommend_recipes_with_ingredient(
+        ingredient_name: str,
+        limit: int = 3,
+    ):
+        """
+        แนะนำเมนูที่ต้องมีวัตถุดิบที่กำหนด (เช่น กุ้งแก้ว)
+        """
+
+        @sync_to_async
+        def _get():
+            # หา ingredient ก่อน
+            ing = Ingredient.objects.filter(name=ingredient_name).first()
+            if not ing:
+                return {
+                    "status": "ingredient_not_found",
+                    "ingredient": ingredient_name,
+                    "results": [],
+                }
+
+            user_ingredient_ids = set(
+                UserStock.objects
+                .filter(user=user, disable=False)
+                .values_list("ingredient_id", flat=True)
+            )
+
+            # 🔒 filter recipe ที่ "ต้องมี ingredient นี้"
+            recipes = (
+                Recipe.objects
+                .filter(recipe_ingredients__ingredient=ing)
+                .distinct()
+                .prefetch_related(
+                    Prefetch(
+                        "recipe_ingredients",
+                        queryset=RecipeIngredient.objects.select_related("ingredient"),
+                    )
+                )
+            )
+
+            rows = []
+            for recipe in recipes:
+                considered = [
+                    ri for ri in recipe.recipe_ingredients.all()
+                    if ri.ingredient and not ri.ingredient.common
+                ]
+
+                total = len(considered)
+                matched = sum(
+                    1 for ri in considered
+                    if ri.ingredient_id in user_ingredient_ids
+                )
+
+                # ถ้า recipe นี้ใช้วัตถุดิบหลัก แต่ user ไม่มีเลย → ข้าม
+                if total > 0 and matched == 0:
+                    continue
+
+                missing = total - matched
+                match_percentage = (
+                    100.0 if total == 0
+                    else round((matched / total) * 100, 2)
+                )
+
+                missing_names = [
+                    ri.ingredient.name
+                    for ri in considered
+                    if ri.ingredient_id not in user_ingredient_ids
+                ]
+
+                rows.append({
+                    "recipe_name": recipe.title,
+                    "required_ingredient": ingredient_name,
+                    "match_percentage": match_percentage,
+                    "missing_ingredient_count": missing,
+                    "missing_ingredients": missing_names,
+                })
+
+            rows.sort(
+                key=lambda r: (
+                    -r["match_percentage"],
+                    r["missing_ingredient_count"],
+                )
+            )
+
+            return {
+                "status": "ok",
+                "ingredient": ingredient_name,
+                "results": rows[:limit],
+            }
+
+        return await _get()
+    @function_tool
+    async def list_expiring_soon(days: int = 3):
+        today = date.today()
+
+        @sync_to_async
+        def _get():
+            qs = (
+                UserStock.objects
+                .filter(
+                    user=user,
+                    disable=False,
+                    expiration_date__lte=today + timedelta(days=days),
+                )
+                .select_related("ingredient")
+                .order_by("expiration_date")
+            )
+            return [
+                {"ingredient": s.ingredient.name, "expiration_date": str(s.expiration_date)}
+                for s in qs
+            ]
+
+        items = await _get()
+        return {"days": days, "items": items}
+    @function_tool
+    async def clear_expired_ingredients():
+        today = date.today()
+
+        @sync_to_async
+        def _clear():
+            qs = UserStock.objects.filter(
+                user=user,
+                disable=True
+            )
+            count = qs.count()
+            qs.delete()
+            return count
+
+        removed = await _clear()
+        return {"removed": removed}
+    @function_tool
     async def list_priority_ingredients(limit: int = 3):
         """
         คืนวัตถุดิบที่ควรใช้ก่อน (วันหมดอายุใกล้สุด)
@@ -219,7 +411,8 @@ async def entrypoint(ctx: JobContext):
         def _get():
             qs = (
                 UserStock.objects
-                .filter(user=user)
+                .filter(user=user,
+                        disable=False,)
                 .select_related("ingredient")
                 .order_by("expiration_date")[:limit]
             )
@@ -357,25 +550,49 @@ async def entrypoint(ctx: JobContext):
     # chat_ctx = llm.ChatContext()
     print("📜 openai.ChatContext()...")
 
+    # SYSTEM_BASE = (
+    #     f"วันนี้คือวันที่ {today_str}\n"
+    #     "คุณคือ AI ผู้ช่วยจัดการวัตถุดิบในครัว\n"
+    #     "กฎ:\n"
+    #     "- เพิ่ม/ลบได้ทีละ 1 รายการ\n"
+    #     "- ถ้าเพิ่มแต่ไม่รู้วันหมดอายุ ต้องถามก่อน\n"
+    #     "- ถ้าจะ add_ingredient ให้เรียก resolve_ingredient_vector ก่อนทุกครั้ง\n"
+    #     "- ถ้าลบ ต้องเรียก list_stock_expiry ก่อน\n"
+    #     "- ถ้ามีหลายวันหมดอายุ ต้องถามให้ user เลือก\n"
+    #     "- ถ้า add_ingredient คืน status = exists ให้ตอบว่า "
+    #     "วัตถุดิบนี้มีอยู่แล้วในสต็อก และห้ามบอกว่าเพิ่มสำเร็จ\n"
+    #     "- ระบบเก็บวันที่เป็น ค.ศ. (YYYY-MM-DD)\n"
+    #     "- หากผู้ใช้พูดปี พ.ศ. ให้แปลงเป็น ค.ศ. ก่อนเรียกเครื่องมือ\n"
+    #     "- เวลาตอบผู้ใช้ ให้แสดงวันที่เป็น ค.ศ.\n"
+    #     "- ตอบเป็นภาษาไทย\n"
+    #     "- หากผู้ใช้ถามว่า ควรใช้วัตถุดิบไหนก่อน / อะไรใกล้หมดอายุ / ควรทำอะไรก่อน\n"
+    #     "  ให้เรียก list_priority_ingredients\n"
+    #     "- ห้ามเดาเองโดยไม่เรียกเครื่องมือ\n"
+    #     "- หลังได้ผลลัพธ์ ให้สรุปเป็นภาษาไทยแบบเข้าใจง่าย\n"
+    # )
     SYSTEM_BASE = (
         f"วันนี้คือวันที่ {today_str}\n"
-        "คุณคือ AI ผู้ช่วยจัดการวัตถุดิบในครัว\n"
-        "กฎ:\n"
-        "- เพิ่ม/ลบได้ทีละ 1 รายการ\n"
-        "- ถ้าเพิ่มแต่ไม่รู้วันหมดอายุ ต้องถามก่อน\n"
-        "- ถ้าจะ add_ingredient ให้เรียก resolve_ingredient_vector ก่อนทุกครั้ง\n"
-        "- ถ้าลบ ต้องเรียก list_stock_expiry ก่อน\n"
-        "- ถ้ามีหลายวันหมดอายุ ต้องถามให้ user เลือก\n"
-        "- ถ้า add_ingredient คืน status = exists ให้ตอบว่า "
-        "วัตถุดิบนี้มีอยู่แล้วในสต็อก และห้ามบอกว่าเพิ่มสำเร็จ\n"
-        "- ระบบเก็บวันที่เป็น ค.ศ. (YYYY-MM-DD)\n"
-        "- หากผู้ใช้พูดปี พ.ศ. ให้แปลงเป็น ค.ศ. ก่อนเรียกเครื่องมือ\n"
-        "- เวลาตอบผู้ใช้ ให้แสดงวันที่เป็น ค.ศ.\n"
-        "- ตอบเป็นภาษาไทย\n"
-        "- หากผู้ใช้ถามว่า ควรใช้วัตถุดิบไหนก่อน / อะไรใกล้หมดอายุ / ควรทำอะไรก่อน\n"
-        "  ให้เรียก list_priority_ingredients\n"
-        "- ห้ามเดาเองโดยไม่เรียกเครื่องมือ\n"
-        "- หลังได้ผลลัพธ์ ให้สรุปเป็นภาษาไทยแบบเข้าใจง่าย\n"
+        "คุณคือ AI เชฟผู้ช่วยจัดการวัตถุดิบและแนะนำเมนูอาหาร (Kitchen Assistant)\n"
+        "หน้าที่ของคุณคือการจัดการสต็อกและแนะนำการทำอาหารตามวัตถุดิบที่มี\n\n"
+        "กฎการเลือกใช้เครื่องมือ (Tool Usage Rules):\n"
+        "1. **การเพิ่มวัตถุดิบ (Add):**\n"
+        "   - ต้องเรียก `resolve_ingredient_vector` เพื่อตรวจสอบชื่อก่อนเสมอ\n"
+        "   - หากสถานะเป็น resolved ถึงจะเรียก `add_ingredient`\n"
+        "   - ถ้าผู้ใช้ไม่บอกวันหมดอายุ ต้องถามก่อน ห้ามเดาเอง\n"
+        "2. **การลบวัตถุดิบ (Remove):**\n"
+        "   - ต้องเรียก `list_stock_expiry` ก่อนเพื่อดูว่ามีของจริงไหม\n"
+        "   - จากนั้นจึงเรียก `remove_ingredient` ตามวันที่ที่ระบุ\n"
+        "3. **การตรวจสอบและแจ้งเตือน (Check/List):**\n"
+        "   - ถามว่า 'มีอะไรต้องรีบใช้', 'อะไรจะหมดอายุ', 'ควรใช้อะไรก่อน' -> เรียก `list_priority_ingredients` หรือ `list_expiring_soon`\n"
+        "   - สั่งว่า 'เคลียร์ของเสีย', 'ลบของหมดอายุทิ้งให้หมด' -> เรียก `clear_expired_ingredients`\n"
+        "4. **การแนะนำเมนูอาหาร (Recipe Recommendation):**\n"
+        "   - ถามว่า 'ทำอะไรกินดี', 'มีของพวกนี้ทำเมนูอะไรได้บ้าง' -> เรียก `recommend_recipes_for_user`\n\n"
+        "5. **การแนะนำเมนูอาหารโดยพูดวัตถุดิบ :**\n"
+        "   - ถ้าผู้ใช้ถามว่า 'มี X ทำอะไรได้บ้าง', 'อยากได้เมนูที่มี X' -> เรียก `recommend_recipes_with_ingredient` โดย X คือวัตถุดิบที่พูดถึง\n\n"
+        "ข้อปฏิบัติทั่วไป:\n"
+        "- ระบบเก็บวันที่แบบ ค.ศ. (YYYY-MM-DD) หากได้ยิน พ.ศ. ให้แปลงเป็น ค.ศ.\n"
+        "- ตอบกลับเป็นภาษาไทยที่สุภาพ เป็นธรรมชาติ และเข้าใจง่าย\n"
+        "- ห้ามสร้างข้อมูลเท็จ (Hallucination) ให้ตอบตามผลลัพธ์ของเครื่องมือเท่านั้น\n"
     )
 
     def reset_chat_ctx():
@@ -456,6 +673,10 @@ async def entrypoint(ctx: JobContext):
                     "list_stock_expiry": list_stock_expiry,
                     "remove_ingredient": remove_ingredient,
                     "list_priority_ingredients": list_priority_ingredients,
+                    "recommend_recipes_for_user": recommend_recipes_for_user,
+                    "recommend_recipes_with_ingredient": recommend_recipes_with_ingredient,
+                    "list_expiring_soon": list_expiring_soon,
+                    "clear_expired_ingredients": clear_expired_ingredients,
                 }
                 while True:
                     print("START WHILE...")
@@ -496,90 +717,11 @@ async def entrypoint(ctx: JobContext):
                                 reply_text += delta.content
                         print(f"🤖 AGENTV2: {reply_text} toolcall: {tool_calls}")
                         
-                        # if tool_calls:
-                        #     stop_after_tool = False
-                        #     for tc in tool_calls:
-                        #         print(f"⚙️ TOOL CALL: {tc}")
-                        #         tool_name = tc.name
-                        #         tool_args = json.loads(tc.arguments or "{}")
-
-                        #         print(f"⚙️ EXEC TOOL: {tool_name} args={tool_args}")
-                        #         # result = await tc.execute()
-                        #         tool_fn = TOOLS.get(tool_name)
-                        #         if not tool_fn:
-                        #             raise RuntimeError(f"Unknown tool: {tool_name}")
-
-                        #         result = await tool_fn(**tool_args)
-                        #         print(f"⚙️ TOOL RESULT: {result}")
-
-                        #         chat_ctx.add_message(
-                        #             role="assistant",
-                        #             id=tc.call_id,
-                        #             content=json.dumps(result, ensure_ascii=False),
-                        #         )
-                        #         if tool_name == "resolve_ingredient_vector":
-                        #             if result["status"] == "ambiguous":
-                        #                 choices = "\n".join(
-                        #                     [f"- {c['name']} (ความใกล้เคียง {c['score']})"
-                        #                     for c in result["candidates"]]
-                        #                 )
-
-                        #                 chat_ctx.add_message(
-                        #                     role="system",
-                        #                     content=(
-                        #                         "ชื่อวัตถุดิบยังไม่ชัดเจน\n"
-                        #                         "กรุณาถามผู้ใช้ให้เลือกจากตัวเลือกด้านล่าง "
-                        #                         "หรือพูดชื่อใหม่ให้ชัดเจน\n\n"
-                        #                         f"{choices}\n\n"
-                        #                         "ตอบเป็นภาษาไทยแบบเป็นธรรมชาติ "
-                        #                         "และห้ามเรียกเครื่องมือใด ๆ"
-                        #                     ),
-                        #                 )
-                        #                 continue
-                        #         if tool_name == "add_ingredient" and result.get("status") == "added":
-                        #             stop_after_tool = True
-                        #     # chat_ctx.add_message(
-                        #     #     role="system",
-                        #     #     content=(
-                        #     #         "เครื่องมือได้ถูกเรียกใช้งานเรียบร้อยแล้ว "
-                        #     #         "โปรดสรุปคำตอบให้ผู้ใช้เป็นภาษาไทย "
-                        #     #         "และห้ามเรียกเครื่องมือซ้ำ"
-                        #     #     ),
-                        #     # )
-                        #     # chat_ctx.add_message(
-                        #     #     role="system",
-                        #     #     content=(
-                        #     #         "การดำเนินการนี้เสร็จสมบูรณ์แล้ว "
-                        #     #         "ห้ามใช้ข้อมูลวัตถุดิบหรือวันหมดอายุจากข้อความก่อนหน้านี้อีก "
-                        #     #         "หากผู้ใช้พูดต่อ ให้ถือว่าเป็นคำสั่งใหม่"
-                        #     #     ),
-                        #     # )
-
-                        #     # # ✅ ให้ LLM สรุปคำตอบครั้งสุดท้าย
-                        #     # chat_ctx.add_message(
-                        #     #     role="system",
-                        #     #     content=(
-                        #     #         "โปรดตอบผู้ใช้เป็นภาษาไทยตามผลลัพธ์ของเครื่องมือด้านบน "
-                        #     #         "และห้ามเรียกเครื่องมือซ้ำ"
-                        #     #     ),
-                        #     # )
-                        #     if stop_after_tool:
-                        #         # ให้ LLM สรุป “ครั้งเดียว” แล้วจบ turn
-                        #         chat_ctx.add_message(
-                        #             role="system",
-                        #             content=(
-                        #                 "การเพิ่มวัตถุดิบเสร็จสมบูรณ์แล้ว "
-                        #                 "โปรดตอบสรุปให้ผู้ใช้เป็นภาษาไทย "
-                        #                 "และห้ามเรียกเครื่องมือใด ๆ อีก"
-                        #             ),
-                        #         )
-                        #         # ❗ สำคัญ: continue ไม่ใช่ break
-                        #         continue
-                        #     continue
-                            # break
+                        stop_turn = False
+                        reset_after_reply = False
                         if tool_calls:
-                            stop_turn = False  # ใช้ปิด loop อย่างถูกต้อง
-                            reset_after_reply = False
+                            # stop_turn = False
+                            # reset_after_reply = False
 
                             for tc in tool_calls:
                                 tool_name = tc.name
@@ -587,197 +729,207 @@ async def entrypoint(ctx: JobContext):
 
                                 tool_fn = TOOLS.get(tool_name)
                                 if not tool_fn:
-                                    raise RuntimeError(f"Unknown tool: {tool_name}")
+                                    print(f"❌ Unknown tool triggered: {tool_name}")
+                                    continue # Skip unknown tool
 
-                                result = await tool_fn(**tool_args)
-                                print(f"⚙️ TOOL!!!!!!! {tool_name}: {result}")
-
-                                # ⛔ สำคัญ: tool result ใช้ "ให้ LLM อ่าน" ไม่ใช่ให้ user เห็น
+                                # Execute Tool
+                                try:
+                                    result = await tool_fn(**tool_args)
+                                    print(f"⚙️ TOOL EXECUTED: {tool_name} -> {result}")
+                                except Exception as e:
+                                    result = {"error": str(e)}
+                                
+                                # ส่งผลลัพธ์กลับให้ LLM รู้ (User ไม่เห็นอันนี้)
                                 chat_ctx.add_message(
                                     role="assistant",
                                     id=tc.call_id,
                                     content=json.dumps(result, ensure_ascii=False),
                                 )
 
-                                # ===============================
-                                # 🧠 HANDLE EACH TOOL EXPLICITLY
-                                # ===============================
+                                # =========================================================
+                                # 🧠 HANDLE TOOL RESULTS (INSTRUCTION TO LLM)
+                                # =========================================================
 
-                                # ---------- resolve_ingredient_vector ----------
+                                # 1. RESOLVE INGREDIENT (ค้นหาชื่อ)
                                 if tool_name == "resolve_ingredient_vector":
                                     if result["status"] == "ambiguous":
-                                        choices = "\n".join(
-                                            [f"- {c['name']} (ความใกล้เคียง {c['score']})"
-                                            for c in result["candidates"]]
-                                        )
-
+                                        choices = "\n".join([f"- {c['name']}" for c in result["candidates"]])
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "ชื่อวัตถุดิบยังไม่ชัดเจน\n"
-                                                "กรุณาถามผู้ใช้ให้เลือกจากตัวเลือกด้านล่าง "
-                                                "หรือพูดชื่อใหม่ให้ชัดเจน\n\n"
-                                                f"{choices}\n\n"
-                                                "ตอบเป็นภาษาไทยแบบเป็นธรรมชาติ \n"
-                                                "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                            content=f"ชื่อไม่ชัดเจน ให้ถามผู้ใช้ว่าหมายถึงอันไหน:\n{choices}\nตอบเป็นภาษาไทย ห้ามเรียกเครื่องมือซ้ำ"
                                         )
                                         stop_turn = True
-
                                     elif result["status"] == "resolved":
-                                        # ปล่อยให้ LLM เดินต่อ (เช่นไปถามวันหมดอายุ)
-                                        # pass
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                f"วัตถุดิบคือ {result['item_name']} แน่นอนแล้ว\n"
-                                                "ขั้นตอนถัดไป:\n"
-                                                "- หากยังไม่ทราบวันหมดอายุ ให้ถามผู้ใช้ก่อน\n"
-                                                "- ห้ามสรุปว่ามีหรือไม่มีในสต็อก\n"
-                                                "- ห้ามบอกว่ามีอยู่แล้ว\n"
-                                                "- ห้ามเรียกเครื่องมือใด ๆ\n"
-                                                "- ตอบเป็นภาษาไทยแบบสุภาพและเป็นธรรมชาติ\n"
-                                            ),
+                                            content=f"เจอวัตถุดิบคือ '{result['item_name']}' แล้ว\nถามวันหมดอายุต่อ (ถ้ายังไม่รู้) หรือดำเนินการเพิ่มถ้าข้อมูลครบ"
                                         )
-                                        stop_turn = True
+                                        # ไม่ stop_turn ปล่อยให้ LLM ตัดสินใจต่อ (เช่นเรียก add_ingredient ทันทีถ้า user บอกวันมาแล้ว)
 
-                                # ---------- add_ingredient ----------
+                                # 2. ADD INGREDIENT (เพิ่มของ)
                                 elif tool_name == "add_ingredient":
                                     status = result.get("status")
-
                                     if status == "need_expiry":
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "ยังไม่ทราบวันหมดอายุของวัตถุดิบนี้ \n"
-                                                "โปรดถามผู้ใช้ว่าวันหมดอายุคือวันไหน \n"
-                                                "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                                "และห้ามเรียกเครื่องมือใด \nๆ"
-                                                "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                            content="ขาดวันหมดอายุ ถามผู้ใช้ว่าหมดอายุวันไหน (ตอบไทยสุภาพ)"
                                         )
                                         stop_turn = True
-
                                     elif status == "exists":
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "วัตถุดิบนี้มีอยู่ในสต็อกแล้ว \n"
-                                                "โดยมีวันหมดอายุเดียวกัน \n"
-                                                "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                                "และห้ามเรียกเครื่องมือใด ๆ\n"
-                                                "และห้ามแสดง JSON หรือเรียกเครื่องมือ\n"
-                                            ),
+                                            content="แจ้งผู้ใช้ว่า: วัตถุดิบนี้ล็อตวันหมดอายุนี้ มีในระบบอยู่แล้ว ไม่ได้เพิ่มซ้ำ"
                                         )
                                         stop_turn = True
-
                                     elif status == "added":
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "เพิ่มวัตถุดิบเรียบร้อยแล้ว \n"
-                                                "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                                "และห้ามเรียกเครื่องมือใด ๆ อีก\n"
-                                                "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                            content=f"แจ้งผู้ใช้ว่า: เพิ่ม {result['item_name']} (หมดอายุ {result['expiration_date']}) เรียบร้อยแล้ว"
                                         )
                                         stop_turn = True
-                                        reset_after_reply = True
-
+                                        reset_after_reply = True # จบงานแล้ว เคลียร์ context ได้
                                     elif status == "not_found":
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "ไม่พบวัตถุดิบนี้ในระบบ \n"
-                                                "โปรดขอให้ผู้ใช้พูดชื่อใหม่ให้ชัดเจน \n"
-                                                "หรือเสนอชื่อที่ใกล้เคียง \n"
-                                                "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                                "และห้ามเรียกเครื่องมือใด ๆ\n"
-                                                "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                            content="แจ้งผู้ใช้ว่า: ไม่พบชื่อวัตถุดิบนี้ในฐานข้อมูลหลัก"
                                         )
                                         stop_turn = True
 
-                                # ---------- list_stock_expiry ----------
+                                # 3. LIST STOCK EXPIRY (เช็คก่อนลบ)
                                 elif tool_name == "list_stock_expiry":
                                     expiries = result.get("expiries", [])
-
                                     if not expiries:
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "ไม่พบวัตถุดิบนี้ในสต็อก \n"
-                                                "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                                "และห้ามเรียกเครื่องมือใด ๆ\n"
-                                                "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                            content="แจ้งผู้ใช้ว่า: ไม่พบวัตถุดิบนี้ในสต็อกเลย"
                                         )
                                         stop_turn = True
-
                                     elif len(expiries) > 1:
-                                        dates = "\n".join([f"- {d}" for d in expiries])
+                                        dates = ", ".join(expiries)
                                         chat_ctx.add_message(
                                             role="system",
-                                            content=(
-                                                "พบวัตถุดิบนี้หลายวันหมดอายุ\n"
-                                                "กรุณาถามผู้ใช้ให้เลือกวันหมดอายุที่ต้องการ\n\n"
-                                                f"{dates}\n\n"
-                                                "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                                "และห้ามเรียกเครื่องมือใด ๆ\n"
-                                                "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                            content=f"พบหลายวันหมดอายุ ({dates}) ถามผู้ใช้ว่าจะลบอันไหน"
                                         )
                                         stop_turn = True
+                                    # ถ้ามี 1 อัน LLM มักจะฉลาดพอที่จะเรียก remove ต่อเอง หรือถามยืนยัน
 
-                                    # ถ้ามีวันเดียว ปล่อยให้ LLM เดินต่อไปลบ
-
-                                # ---------- remove_ingredient ----------
+                                # 4. REMOVE INGREDIENT (ลบของ)
                                 elif tool_name == "remove_ingredient":
                                     chat_ctx.add_message(
                                         role="system",
-                                        content=(
-                                            "ลบวัตถุดิบเรียบร้อยแล้ว \n"
-                                            "ตอบเป็นภาษาไทยแบบสุภาพ \n"
-                                            "และห้ามเรียกเครื่องมือใด ๆ อีก\n"
-                                            "ห้ามแสดง JSON และห้ามเรียกเครื่องมือใด ๆ\n"
-                                        ),
+                                        content="แจ้งผู้ใช้ว่า: ลบวัตถุดิบออกจากสต็อกเรียบร้อยแล้ว"
                                     )
                                     stop_turn = True
-                                elif tool_name == "list_priority_ingredients":
-                                    items = result.get("items", [])
+                                    reset_after_reply = True
 
+                                # 5. LIST PRIORITY / EXPIRING SOON (แนะนำของต้องรีบใช้)
+                                elif tool_name in ["list_priority_ingredients", "list_expiring_soon"]:
+                                    items = result.get("items", [])
                                     if not items:
                                         chat_ctx.add_message(
                                             role="system",
+                                            content="แจ้งผู้ใช้ว่า: ไม่มีวัตถุดิบที่ใกล้หมดอายุในช่วงนี้ สต็อกปลอดภัยดี"
+                                        )
+                                    else:
+                                        lines = "\n".join([f"- {i['ingredient']} (หมดอายุ {i['expiration_date']})" for i in items])
+                                        chat_ctx.add_message(
+                                            role="system",
+                                            content=f"สรุปรายการวัตถุดิบที่ต้องรีบใช้ให้ผู้ใช้ฟัง:\n{lines}\nตอบเป็นภาษาไทย แนะนำว่าควรทำเมนูง่ายๆ หรือรีบใช้ก่อนเสีย"
+                                        )
+                                    stop_turn = True
+
+                                # 6. RECOMMEND RECIPES (แนะนำเมนู) [NEW]
+                                elif tool_name == "list_recommend_recipes":
+                                    recipes = result.get("results", [])
+                                    count = result.get("count", 0)
+                                    
+                                    if count == 0:
+                                        chat_ctx.add_message(
+                                            role="system",
+                                            content="แจ้งผู้ใช้ว่า: จากวัตถุดิบที่มี ยังไม่พอสำหรับทำเมนูแนะนำในระบบ ลองซื้อของเพิ่มไหม"
+                                        )
+                                    else:
+                                        # สร้าง text สรุปเมนู
+                                        rec_text = ""
+                                        for r in recipes:
+                                            missing_txt = ""
+                                            if r['missing_ingredient_count'] > 0:
+                                                missing_txt = f"(ขาด: {', '.join(r['missing_ingredients'])})"
+                                            rec_text += f"- เมนู {r['recipe_name']} (ตรง {r['match_percentage']}%) {missing_txt}\n"
+                                        
+                                        chat_ctx.add_message(
+                                            role="system",
+                                            content=f"แนะนำเมนูที่ทำได้จากของในตู้เย็น:\n{rec_text}\nเชียร์ให้ผู้ใช้ลองทำเมนูที่เปอร์เซ็นต์ตรงกันสูงที่สุด"
+                                        )
+                                    stop_turn = True
+                                elif tool_name == "recommend_recipes_with_ingredient":
+                                    status = result.get("status")
+                                    ingredient = result.get("ingredient")
+                                    recipes = result.get("results", [])
+
+                                    if status == "ingredient_not_found":
+                                        chat_ctx.add_message(
+                                            role="system",
+                                            content=f"แจ้งผู้ใช้ว่า: ไม่พบวัตถุดิบชื่อ '{ingredient}' ในระบบ"
+                                        )
+                                        stop_turn = True
+
+                                    elif not recipes:
+                                        chat_ctx.add_message(
+                                            role="system",
                                             content=(
-                                                "ขณะนี้ไม่มีวัตถุดิบในสต็อก\n"
-                                                "ตอบผู้ใช้เป็นภาษาไทยแบบสุภาพ\n"
-                                                "และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                                f"แจ้งผู้ใช้ว่า: "
+                                                f"ยังไม่มีเมนูที่ใช้ '{ingredient}' "
+                                                f"และสามารถทำได้จากวัตถุดิบที่มีในตอนนี้"
+                                            )
                                         )
                                         stop_turn = True
 
                                     else:
-                                        lines = "\n".join(
-                                            [f"- {i['ingredient']} (หมดอายุ {i['expiration_date']})" for i in items]
-                                        )
+                                        rec_text = ""
+                                        for r in recipes:
+                                            missing_txt = ""
+                                            if r["missing_ingredient_count"] > 0:
+                                                missing_txt = f"(ขาด: {', '.join(r['missing_ingredients'])})"
+
+                                            rec_text += (
+                                                f"- เมนู {r['recipe_name']} "
+                                                f"(ตรง {r['match_percentage']}%) {missing_txt}\n"
+                                            )
 
                                         chat_ctx.add_message(
                                             role="system",
                                             content=(
-                                                "ต่อไปนี้คือวัตถุดิบที่ควรใช้ก่อน (เรียงตามวันหมดอายุใกล้สุด):\n\n"
-                                                f"{lines}\n\n"
-                                                "โปรดอธิบายให้ผู้ใช้เข้าใจง่าย "
-                                                "เช่น แนะนำให้ใช้ตัวไหนก่อน "
-                                                "และห้ามเรียกเครื่องมือใด ๆ\n"
-                                            ),
+                                                f"แนะนำเมนูที่ต้องมีวัตถุดิบ '{ingredient}':\n"
+                                                f"{rec_text}"
+                                                "อธิบายกับผู้ใช้ว่าแนะนำเพราะมีวัตถุดิบนี้ "
+                                                "และเลือกเมนูที่เปอร์เซ็นต์ตรงสูงสุดก่อน"
+                                            )
                                         )
                                         stop_turn = True
 
+                                # 7. CLEAR EXPIRED (เคลียร์ของเสีย) [NEW]
+                                elif tool_name == "clear_expired_ingredients":
+                                    removed_count = result.get("removed", 0)
+                                    if removed_count == 0:
+                                        chat_ctx.add_message(
+                                            role="system",
+                                            content="แจ้งผู้ใช้ว่า: ไม่มีของหมดอายุให้เคลียร์ ตู้เย็นสะอาดดีแล้ว"
+                                        )
+                                    else:
+                                        chat_ctx.add_message(
+                                            role="system",
+                                            content=f"แจ้งผู้ใช้ว่า: กำจัดของหมดอายุออกไปให้แล้วจำนวน {removed_count} รายการ"
+                                        )
+                                    stop_turn = True
+                                    reset_after_reply = True
 
-                            # ⛔ ปิด while-loop อย่างถูกต้อง
+                            # จบ Loop ของ tool_calls
                             if stop_turn:
-                                continue
+                                continue 
+                            
+                            # ถ้า Loop จบแล้วแต่ stop_turn ยังเป็น False แปลว่า LLM อยากเรียก tool ต่อเนื่อง
+                            # (เช่น resolve -> add ใน turn เดียวกัน) ก็ปล่อยให้วน while loop ใหญ่ต่อไป
                             continue
 
                         if reply_text:
